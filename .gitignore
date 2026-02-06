@@ -1,0 +1,29 @@
+# Database
+*.db
+qa.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+.venv/
+env/
+*.egg-info/
+.eggs/
+
+# Uploads (user data)
+static/uploads/
+
+# Environment / secrets
+.env
+.env.local
+*.local
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.swo

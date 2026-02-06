@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Customers - Millpoint QA{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Customers</h1>
+</div>
+
+<!-- Add Customer Form -->
+<div class="card">
+    <div class="card-header">
+        <h2>Add New Customer</h2>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('customer_add') }}" class="form-inline">
+            <div class="form-group">
+                <label for="name">Company Name *</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="contact_person">Contact Person</label>
+                <input type="text" id="contact_person" name="contact_person">
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email">
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone</label>
+                <input type="text" id="phone" name="phone">
+            </div>
+            <button type="submit" class="btn btn-primary">Add Customer</button>
+        </form>
+    </div>
+</div>
+
+<!-- Customer List -->
+<div class="card">
+    <div class="card-header">
+        <h2>Customers</h2>
+    </div>
+    <div class="card-body">
+        {% if customers %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Company Name</th>
+                    <th>Contact Person</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Jobs</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for customer in customers %}
+                <tr>
+                    <td><strong>{{ customer.name }}</strong></td>
+                    <td>{{ customer.contact_person or '-' }}</td>
+                    <td>{{ customer.email or '-' }}</td>
+                    <td>{{ customer.phone or '-' }}</td>
+                    <td>
+                        {% if customer.job_count > 0 %}
+                        <a href="{{ url_for('jobs_list', customer=customer.id) }}">{{ customer.job_count }} jobs</a>
+                        {% else %}
+                        <span class="text-muted">0</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" onclick="editCustomer({{ customer.id }}, '{{ customer.name }}', '{{ customer.contact_person or '' }}', '{{ customer.email or '' }}', '{{ customer.phone or '' }}', '{{ customer.notes or '' }}')">Edit</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">No customers yet. Add your first customer above.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Edit Customer Modal -->
+<div id="editCustomerModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Customer</h3>
+            <button class="modal-close" onclick="hideEditCustomer()">&times;</button>
+        </div>
+        <form method="POST" id="editCustomerForm">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="edit_name">Company Name *</label>
+                    <input type="text" id="edit_name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_contact_person">Contact Person</label>
+                    <input type="text" id="edit_contact_person" name="contact_person">
+                </div>
+                <div class="form-group">
+                    <label for="edit_email">Email</label>
+                    <input type="email" id="edit_email" name="email">
+                </div>
+                <div class="form-group">
+                    <label for="edit_phone">Phone</label>
+                    <input type="text" id="edit_phone" name="phone">
+                </div>
+                <div class="form-group">
+                    <label for="edit_notes">Notes</label>
+                    <textarea id="edit_notes" name="notes" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="hideEditCustomer()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-group textarea {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: inherit;
+    resize: vertical;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function editCustomer(id, name, contact, email, phone, notes) {
+    document.getElementById('editCustomerModal').style.display = 'flex';
+    document.getElementById('editCustomerForm').action = '/customers/' + id + '/edit';
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_contact_person').value = contact;
+    document.getElementById('edit_email').value = email;
+    document.getElementById('edit_phone').value = phone;
+    document.getElementById('edit_notes').value = notes;
+}
+
+function hideEditCustomer() {
+    document.getElementById('editCustomerModal').style.display = 'none';
+}
+
+document.getElementById('editCustomerModal').addEventListener('click', function(e) {
+    if (e.target === this) hideEditCustomer();
+});
+</script>
+{% endblock %}

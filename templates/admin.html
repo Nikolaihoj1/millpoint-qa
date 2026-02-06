@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}User Management - Millpoint QA{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>User Management</h1>
+</div>
+
+<!-- Add User Form -->
+<div class="card">
+    <div class="card-header">
+        <h2>Add New User</h2>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('admin_add_user') }}" class="form-inline">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div class="form-group">
+                <label for="role">Role</label>
+                <select id="role" name="role">
+                    <option value="operator">Operator</option>
+                    <option value="inspector">Inspector</option>
+                    <option value="quality_manager">Quality Manager</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Add User</button>
+        </form>
+    </div>
+</div>
+
+<!-- User List -->
+<div class="card">
+    <div class="card-header">
+        <h2>Users</h2>
+    </div>
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td><strong>{{ user.username }}</strong></td>
+                    <td>{{ user.email or '-' }}</td>
+                    <td><span class="badge badge-{% if user.role == 'admin' %}purple{% elif user.role == 'quality_manager' %}blue{% elif user.role == 'inspector' %}green{% else %}gray{% endif %}">{{ user.role | replace('_', ' ') | title }}</span></td>
+                    <td>
+                        {% if user.active %}
+                        <span class="badge badge-green">Active</span>
+                        {% else %}
+                        <span class="badge badge-red">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ user.created_at[:10] if user.created_at else '-' }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('admin_toggle_user', user_id=user.id) }}" style="display: inline;">
+                            <button type="submit" class="btn btn-sm {% if user.active %}btn-warning{% else %}btn-success{% endif %}">
+                                {% if user.active %}Deactivate{% else %}Activate{% endif %}
+                            </button>
+                        </form>
+                        <button class="btn btn-sm btn-secondary" onclick="showResetPassword({{ user.id }}, '{{ user.username }}')">Reset Password</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div id="resetPasswordModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Reset Password</h3>
+            <button class="modal-close" onclick="hideResetPassword()">&times;</button>
+        </div>
+        <form method="POST" id="resetPasswordForm">
+            <div class="modal-body">
+                <p>Reset password for user: <strong id="resetUsername"></strong></p>
+                <div class="form-group">
+                    <label for="new_password">New Password</label>
+                    <input type="password" id="new_password" name="new_password" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="hideResetPassword()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Reset Password</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showResetPassword(userId, username) {
+    document.getElementById('resetPasswordModal').style.display = 'flex';
+    document.getElementById('resetUsername').textContent = username;
+    document.getElementById('resetPasswordForm').action = '/admin/users/' + userId + '/reset-password';
+}
+
+function hideResetPassword() {
+    document.getElementById('resetPasswordModal').style.display = 'none';
+}
+
+// Close modal on outside click
+document.getElementById('resetPasswordModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideResetPassword();
+    }
+});
+</script>
+{% endblock %}

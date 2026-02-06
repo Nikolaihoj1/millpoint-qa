@@ -1,0 +1,559 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if report %}Measurement Report MR-{{ report.id }}{% else %}New Measurement Report{% endif %} - Millpoint QA
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        {% if report %}
+        <h1>Measurement Report MR-{{ report.id }}</h1>
+        <span class="badge badge-{% if report.overall_status == 'pass' %}green{% elif report.overall_status == 'fail' %}red{% else %}yellow{% endif %} badge-lg">
+            {{ report.overall_status | title }}
+        </span>
+        {% else %}
+        <h1>New Measurement Report</h1>
+        {% endif %}
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('job_detail', job_id=job.id) }}" class="btn btn-secondary">Back to Job</a>
+        {% if view_mode and report %}
+        <a href="{{ url_for('measurement_report_edit', report_id=report.id) }}" class="btn btn-primary">Edit Measurements</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Job Info -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="job-info-row">
+            <div class="info-item">
+                <span class="info-label">Job</span>
+                <span class="info-value"><a href="{{ url_for('job_detail', job_id=job.id) }}">{{ job.internal_job_number }}</a></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">PO Number</span>
+                <span class="info-value">{{ job.po_number }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Part Number</span>
+                <span class="info-value">{{ job.part_number }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Quantity</span>
+                <span class="info-value">{{ job.quantity }}</span>
+            </div>
+            {% if report %}
+            <div class="info-item">
+                <span class="info-label">Report Type</span>
+                <span class="info-value"><span class="badge badge-blue">{{ report.report_type | replace('_', ' ') | title }}</span></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Inspector</span>
+                <span class="info-value">{{ report.inspector_username or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Date</span>
+                <span class="info-value">{{ report.inspection_date[:16] if report.inspection_date else '-' }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if view_mode %}
+<!-- View Mode -->
+<div class="report-grid">
+    <!-- Measurements Table -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Measurements</h2>
+            <div class="measurement-summary">
+                {% set pass_count = dimensions | selectattr('pass_fail', 'equalto', 'pass') | list | length %}
+                {% set fail_count = dimensions | selectattr('pass_fail', 'equalto', 'fail') | list | length %}
+                {% set total_measured = pass_count + fail_count %}
+                <span class="summary-item text-success">{{ pass_count }} Pass</span>
+                <span class="summary-item text-danger">{{ fail_count }} Fail</span>
+                <span class="summary-item text-muted">{{ dimensions | length - total_measured }} Pending</span>
+            </div>
+        </div>
+        <div class="card-body">
+            <table class="table measurement-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Dimension</th>
+                        <th>Nominal</th>
+                        <th>Tolerance</th>
+                        <th>Actual</th>
+                        <th>Result</th>
+                        <th>Equipment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dim in dimensions %}
+                    <tr class="{% if dim.pass_fail == 'fail' %}row-fail{% elif dim.pass_fail == 'pass' %}row-pass{% endif %}">
+                        <td>{{ dim.dimension_number }}</td>
+                        <td>
+                            <strong>{{ dim.dimension_name }}</strong>
+                            {% if dim.critical %}<span class="badge badge-red badge-sm">Critical</span>{% endif %}
+                        </td>
+                        <td>{{ dim.nominal_value }} {{ dim.unit }}</td>
+                        <td>
+                            {% if dim.tolerance_plus is not none %}
+                            +{{ dim.tolerance_plus }} / {{ dim.tolerance_minus }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="actual-value">
+                            {% if dim.actual_value is not none %}
+                            <strong>{{ dim.actual_value }}</strong>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if dim.pass_fail == 'pass' %}
+                            <span class="badge badge-green">PASS</span>
+                            {% elif dim.pass_fail == 'fail' %}
+                            <span class="badge badge-red">FAIL</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ dim.equipment_name or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Scanned Sheets / Attachments -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Scanned Measurement Sheets</h2>
+        </div>
+        <div class="card-body">
+            <!-- Upload Form -->
+            <form method="POST" action="{{ url_for('measurement_report_upload', report_id=report.id) }}" 
+                  enctype="multipart/form-data" class="upload-form">
+                <div class="upload-row">
+                    <input type="file" name="file" accept="image/*,.pdf" required>
+                    <button type="submit" class="btn btn-primary">Upload Scan</button>
+                </div>
+                <p class="help-text">Upload scanned measurement sheets, photos, or PDF documents.</p>
+            </form>
+
+            {% if attachments %}
+            <div class="attachments-grid">
+                {% for att in attachments %}
+                <div class="attachment-item">
+                    {% if att.file_type == 'image' %}
+                    <a href="{{ url_for('static', filename='uploads/' + att.file_path) }}" target="_blank">
+                        <img src="{{ url_for('static', filename='uploads/' + att.file_path) }}" alt="{{ att.file_name }}">
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('static', filename='uploads/' + att.file_path) }}" target="_blank" class="pdf-link">
+                        <div class="pdf-icon">PDF</div>
+                        <span>{{ att.file_name }}</span>
+                    </a>
+                    {% endif %}
+                    <div class="attachment-info">
+                        <small>{{ att.uploaded_by_username }} - {{ att.uploaded_at[:10] if att.uploaded_at else '' }}</small>
+                        <form method="POST" action="{{ url_for('measurement_attachment_delete', report_id=report.id, attachment_id=att.id) }}" 
+                              style="display: inline;" onsubmit="return confirm('Delete this attachment?');">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted">No scanned sheets uploaded yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if report.notes %}
+<div class="card">
+    <div class="card-header">
+        <h2>Notes</h2>
+    </div>
+    <div class="card-body">
+        <p>{{ report.notes }}</p>
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<!-- Input / Edit Mode -->
+<form method="POST" class="measurement-form">
+    <div class="card">
+        <div class="card-header">
+            <h2>{% if edit_mode %}Edit Measurements{% else %}Record Measurements{% endif %}</h2>
+        </div>
+        <div class="card-body">
+            {% if not edit_mode %}
+            <div class="form-row mb-3">
+                <div class="form-group">
+                    <label for="report_type">Report Type</label>
+                    <select id="report_type" name="report_type" required>
+                        <option value="first_article">First Article Inspection (FAI)</option>
+                        <option value="in_process" selected>In-Process Inspection</option>
+                        <option value="final">Final Inspection</option>
+                    </select>
+                </div>
+            </div>
+            {% endif %}
+
+            <p class="help-text">Enter the actual measured values for each dimension. Pass/Fail is calculated automatically.</p>
+
+            <table class="table measurement-input-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Dimension</th>
+                        <th>Nominal</th>
+                        <th>Tolerance</th>
+                        <th>Actual Value *</th>
+                        <th>Equipment</th>
+                        <th>Sample #</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dim in dimensions %}
+                    {% set existing = measurements.get(dim.id) if measurements else none %}
+                    <tr class="{% if dim.critical %}critical-row{% endif %}">
+                        <td>{{ dim.dimension_number }}</td>
+                        <td>
+                            <strong>{{ dim.dimension_name }}</strong>
+                            {% if dim.critical %}<span class="badge badge-red badge-sm">Critical</span>{% endif %}
+                            {% if dim.drawing_reference %}<br><small class="text-muted">{{ dim.drawing_reference }}</small>{% endif %}
+                        </td>
+                        <td>{{ dim.nominal_value }} {{ dim.unit }}</td>
+                        <td>
+                            {% if dim.tolerance_plus is not none %}
+                            <span class="tolerance-display">
+                                +{{ dim.tolerance_plus }}<br>{{ dim.tolerance_minus }}
+                            </span>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if dim.unit == 'go/nogo' %}
+                            <select name="actual_{{ dim.id }}" class="actual-input">
+                                <option value="">-- Select --</option>
+                                <option value="1" {% if existing and existing.actual_value == 1 %}selected{% endif %}>GO (Pass)</option>
+                                <option value="0" {% if existing and existing.actual_value == 0 %}selected{% endif %}>NO-GO (Fail)</option>
+                            </select>
+                            {% else %}
+                            <input type="number" step="any" name="actual_{{ dim.id }}" 
+                                   class="actual-input" placeholder="Enter value"
+                                   value="{{ existing.actual_value if existing else '' }}"
+                                   data-nominal="{{ dim.nominal_value }}"
+                                   data-tol-plus="{{ dim.tolerance_plus or '' }}"
+                                   data-tol-minus="{{ dim.tolerance_minus or '' }}"
+                                   onchange="checkTolerance(this)">
+                            {% endif %}
+                        </td>
+                        <td>
+                            <select name="equipment_{{ dim.id }}" class="equipment-select">
+                                <option value="">-- None --</option>
+                                {% for eq in equipment %}
+                                <option value="{{ eq.id }}" {% if existing and existing.equipment_id == eq.id %}selected{% endif %}>
+                                    {{ eq.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" name="sample_{{ dim.id }}" class="sample-input" 
+                                   value="{{ existing.sample_number if existing else 1 }}" min="1">
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="form-group mt-3">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" rows="3" placeholder="Any additional notes about this inspection...">{{ report.notes if report else '' }}</textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="{{ url_for('job_detail', job_id=job.id) }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">
+            {% if edit_mode %}Save Changes{% else %}Create Report{% endif %}
+        </button>
+    </div>
+</form>
+{% endif %}
+
+<!-- Print Button -->
+{% if view_mode %}
+<div class="print-section">
+    <button onclick="window.print()" class="btn btn-secondary">Print Report</button>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-title {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.badge-lg {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+}
+.badge-sm {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.35rem;
+    vertical-align: middle;
+}
+.job-info-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.info-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.info-value {
+    font-size: 0.9rem;
+}
+
+/* Report Grid */
+.report-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+}
+
+/* Measurement Table */
+.measurement-table .row-pass {
+    background-color: rgba(25, 135, 84, 0.1);
+}
+.measurement-table .row-fail {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+.actual-value {
+    font-family: monospace;
+    font-size: 1rem;
+}
+.measurement-summary {
+    display: flex;
+    gap: 1rem;
+}
+.summary-item {
+    font-weight: 600;
+}
+
+/* Measurement Input Table */
+.measurement-input-table .actual-input {
+    width: 120px;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: monospace;
+}
+.measurement-input-table .actual-input.in-tolerance {
+    border-color: var(--success);
+    background-color: rgba(25, 135, 84, 0.1);
+}
+.measurement-input-table .actual-input.out-of-tolerance {
+    border-color: var(--danger);
+    background-color: rgba(220, 53, 69, 0.1);
+}
+.equipment-select {
+    width: 140px;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+}
+.sample-input {
+    width: 60px;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+.critical-row {
+    background-color: rgba(220, 53, 69, 0.05);
+}
+.tolerance-display {
+    font-family: monospace;
+    font-size: 0.85rem;
+    line-height: 1.2;
+}
+
+/* Attachments */
+.upload-form {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.upload-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.upload-row input[type="file"] {
+    flex: 1;
+}
+.attachments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+}
+.attachment-item {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.attachment-item img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+}
+.attachment-item .pdf-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    text-align: center;
+    text-decoration: none;
+}
+.pdf-icon {
+    width: 50px;
+    height: 60px;
+    background: var(--danger);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+.attachment-info {
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Form */
+.form-group textarea {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: inherit;
+    resize: vertical;
+}
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+.form-row {
+    display: flex;
+    gap: 1rem;
+}
+.help-text {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+.mt-3 { margin-top: 1rem; }
+.mb-3 { margin-bottom: 1rem; }
+
+.print-section {
+    margin-top: 1.5rem;
+    text-align: center;
+}
+
+@media (max-width: 1024px) {
+    .report-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media print {
+    .page-actions, .upload-form, .btn, .print-section, .attachment-info form {
+        display: none !important;
+    }
+    .card {
+        break-inside: avoid;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function checkTolerance(input) {
+    const value = parseFloat(input.value);
+    const nominal = parseFloat(input.dataset.nominal);
+    const tolPlus = parseFloat(input.dataset.tolPlus);
+    const tolMinus = parseFloat(input.dataset.tolMinus);
+    
+    if (isNaN(value)) {
+        input.classList.remove('in-tolerance', 'out-of-tolerance');
+        return;
+    }
+    
+    if (isNaN(tolPlus) || isNaN(tolMinus)) {
+        input.classList.remove('in-tolerance', 'out-of-tolerance');
+        return;
+    }
+    
+    const upperLimit = nominal + tolPlus;
+    const lowerLimit = nominal + tolMinus;
+    
+    if (value >= lowerLimit && value <= upperLimit) {
+        input.classList.add('in-tolerance');
+        input.classList.remove('out-of-tolerance');
+    } else {
+        input.classList.add('out-of-tolerance');
+        input.classList.remove('in-tolerance');
+    }
+}
+
+// Check all inputs on page load (for edit mode)
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.actual-input[type="number"]').forEach(function(input) {
+        if (input.value) {
+            checkTolerance(input);
+        }
+    });
+});
+</script>
+{% endblock %}

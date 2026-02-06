@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}{{ part.part_number }}{% if part.part_revision %} Rev {{ part.part_revision }}{% endif %} - Millpoint QA{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>
+        {{ part.part_number }}
+        {% if part.part_revision %}
+        <span class="badge badge-info">{{ part.part_revision }}</span>
+        {% endif %}
+    </h1>
+    <div class="page-actions">
+        <a href="{{ url_for('quality_by_part', part_id=part.id, part=part.part_number) }}" class="btn btn-secondary">Quality History</a>
+        <a href="{{ url_for('parts_list') }}" class="btn btn-secondary">Back to Parts</a>
+    </div>
+</div>
+
+<!-- Part Info -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h2>Part Information</h2>
+    </div>
+    <div class="card-body">
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Part Number</span>
+                <span class="info-value"><strong>{{ part.part_number }}</strong></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Revision</span>
+                <span class="info-value">
+                    {% if part.part_revision %}
+                    <span class="badge badge-info">{{ part.part_revision }}</span>
+                    {% else %}
+                    <span class="text-muted">None</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Description</span>
+                <span class="info-value">{{ part.part_description or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Created</span>
+                <span class="info-value">{{ part.created_at[:16] if part.created_at else '-' }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <!-- Jobs Using This Part -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Jobs ({{ jobs|length }})</h2>
+        </div>
+        <div class="card-body">
+            {% if jobs %}
+            <table class="table table-compact">
+                <thead>
+                    <tr>
+                        <th>Job #</th>
+                        <th>PO #</th>
+                        <th>Customer</th>
+                        <th>Qty</th>
+                        <th>Stage</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in jobs %}
+                    <tr>
+                        <td><a href="{{ url_for('job_detail', job_id=job.id) }}">{{ job.internal_job_number }}</a></td>
+                        <td>{{ job.po_number }}</td>
+                        <td>{{ job.customer_name or '-' }}</td>
+                        <td>{{ job.quantity }}</td>
+                        <td>
+                            <span class="badge badge-{{ workflow_stage_colors.get(job.workflow_stage, 'gray') }}">
+                                {{ job.workflow_stage | replace('_', ' ') | title }}
+                            </span>
+                        </td>
+                        <td>{{ job.created_at[:10] if job.created_at else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted text-center">No jobs found for this part</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quality Issues -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Quality Issues ({{ errors|length }})</h2>
+        </div>
+        <div class="card-body">
+            {% if errors %}
+            <table class="table table-compact">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Job</th>
+                        <th>Severity</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for error in errors %}
+                    <tr>
+                        <td>{{ error.found_date[:10] if error.found_date else '-' }}</td>
+                        <td><a href="{{ url_for('error_report_detail', error_id=error.id) }}">{{ error.internal_job_number }}</a></td>
+                        <td>
+                            <span class="badge badge-{% if error.severity == 'critical' %}red{% elif error.severity == 'major' %}orange{% else %}yellow{% endif %}">
+                                {{ error.severity | title }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge badge-{% if error.status == 'open' %}blue{% elif error.status == 'closed' %}green{% else %}gray{% endif %}">
+                                {{ error.status | title }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted text-center">No quality issues recorded</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.mb-4 { margin-bottom: 1.5rem; }
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+.info-item {
+    padding: 0.75rem;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+}
+.info-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+}
+.info-value {
+    font-size: 1rem;
+    font-weight: 500;
+}
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+.table-compact {
+    font-size: 0.85rem;
+}
+.table-compact th, .table-compact td {
+    padding: 0.5rem;
+}
+@media (max-width: 1024px) {
+    .detail-grid { grid-template-columns: 1fr; }
+    .info-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}

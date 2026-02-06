@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Supplier Quality Issues{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Supplier Quality Issues</h1>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h3>Filters</h3>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="filter-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="type">Error Type</label>
+                    <select name="type" id="type" class="form-control">
+                        <option value="">All Types</option>
+                        <option value="material" {{ 'selected' if filter_type == 'material' }}>Material Supplier</option>
+                        <option value="external" {{ 'selected' if filter_type == 'external' }}>External Process</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select name="status" id="status" class="form-control">
+                        <option value="">All Statuses</option>
+                        <option value="open" {{ 'selected' if filter_status == 'open' }}>Open</option>
+                        <option value="resolved" {{ 'selected' if filter_status == 'resolved' }}>Resolved</option>
+                        <option value="closed" {{ 'selected' if filter_status == 'closed' }}>Closed</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="part">Part Number</label>
+                    <select name="part" id="part" class="form-control">
+                        <option value="">All Parts</option>
+                        {% for p in parts %}
+                        <option value="{{ p.part_number }}" {{ 'selected' if filter_part == p.part_number }}>{{ p.part_number }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group" style="align-self: flex-end;">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    <a href="{{ url_for('all_supplier_errors') }}" class="btn btn-secondary">Clear</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if errors %}
+<div class="card">
+    <div class="card-header">
+        <h3>Error Reports ({{ errors|length }})</h3>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Date</th>
+                    <th>Part Number</th>
+                    <th>Supplier</th>
+                    <th>Type</th>
+                    <th>Job</th>
+                    <th>Severity</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for error in errors %}
+                <tr>
+                    <td>ER-{{ '%04d'|format(error.id) }}</td>
+                    <td>{{ error.found_date[:10] }}</td>
+                    <td>
+                        <a href="{{ url_for('quality_by_part', part=error.part_number) }}">{{ error.part_number }}</a>
+                        {% if error.part_revision %}
+                        <span class="badge badge-info badge-sm">{{ error.part_revision }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if error.supplier_name %}
+                        <a href="{{ url_for('supplier_error_history', supplier_id=error.supplier_id) }}">
+                            {{ error.supplier_name }}
+                        </a>
+                        {% else %}
+                        <span class="text-muted">Unknown</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ 'info' if error.error_type == 'material_supplier' else 'warning' }}">
+                            {{ 'Material' if error.error_type == 'material_supplier' else 'External' }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('job_detail', job_id=error.job_id) }}">
+                            {{ error.job_number }}
+                        </a>
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ 'danger' if error.severity == 'critical' else 'warning' if error.severity == 'major' else 'info' }}">
+                            {{ error.severity|title }}
+                        </span>
+                    </td>
+                    <td>{{ error.description[:50] }}{{ '...' if error.description|length > 50 else '' }}</td>
+                    <td>
+                        <span class="badge badge-{{ 'danger' if error.status == 'open' else 'success' if error.status == 'closed' else 'warning' }}">
+                            {{ error.status|title }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('error_report_detail', error_id=error.id) }}" class="btn btn-sm btn-primary">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center">
+        <p class="text-muted">No supplier quality issues found.</p>
+    </div>
+</div>
+{% endif %}
+
+<h3 class="mt-4">Supplier Error Summary</h3>
+<div class="card">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Supplier</th>
+                    <th>Type</th>
+                    <th>Total Errors</th>
+                    <th>Open</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for supplier in suppliers %}
+                {% set supplier_errors = errors|selectattr('supplier_id', 'equalto', supplier.id)|list %}
+                {% set open_errors = supplier_errors|selectattr('status', 'equalto', 'open')|list %}
+                <tr>
+                    <td>{{ supplier.name }}</td>
+                    <td>
+                        <span class="badge badge-{{ 'info' if supplier.supplier_type == 'material' else 'warning' if supplier.supplier_type == 'external' else 'secondary' }}">
+                            {{ supplier.supplier_type|title }}
+                        </span>
+                    </td>
+                    <td>{{ supplier_errors|length }}</td>
+                    <td>
+                        {% if open_errors|length > 0 %}
+                        <span class="badge badge-danger">{{ open_errors|length }}</span>
+                        {% else %}
+                        <span class="text-muted">0</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('supplier_error_history', supplier_id=supplier.id) }}" class="btn btn-sm btn-secondary">View History</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

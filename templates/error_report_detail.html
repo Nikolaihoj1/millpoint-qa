@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}Error Report ER-{{ '%04d'|format(error.id) }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Error Report ER-{{ '%04d'|format(error.id) }}</h1>
+    <div class="btn-group">
+        <a href="{{ url_for('job_detail', job_id=error.job_id) }}" class="btn btn-secondary">Back to Job</a>
+        {% if error.supplier_id %}
+        <a href="{{ url_for('supplier_error_history', supplier_id=error.supplier_id) }}" class="btn btn-secondary">Supplier History</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Error Details -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>Error Details</h3>
+                <span class="badge badge-{{ 'danger' if error.status == 'open' else 'success' if error.status == 'closed' else 'warning' }}" style="font-size: 1rem;">
+                    {{ error.status|upper }}
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col">
+                        <strong>Job:</strong>
+                        <a href="{{ url_for('job_detail', job_id=error.job_id) }}">{{ error.job_number }}</a>
+                        - {{ error.part_name }}
+                    </div>
+                    <div class="col">
+                        <strong>Found Date:</strong> {{ error.found_date[:10] }}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col">
+                        <strong>Severity:</strong>
+                        <span class="badge badge-{{ 'danger' if error.severity == 'critical' else 'warning' if error.severity == 'major' else 'info' }}">
+                            {{ error.severity|title }}
+                        </span>
+                    </div>
+                    <div class="col">
+                        <strong>Error Type:</strong>
+                        <span class="badge badge-{{ 'info' if error.error_type == 'material_supplier' else 'warning' if error.error_type == 'external_supplier' else 'secondary' }}">
+                            {{ error.error_type|replace('_', ' ')|title }}
+                        </span>
+                    </div>
+                </div>
+                
+                {% if error.supplier_name %}
+                <div class="row mb-3">
+                    <div class="col">
+                        <strong>Supplier:</strong>
+                        <a href="{{ url_for('supplier_error_history', supplier_id=error.supplier_id) }}">{{ error.supplier_name }}</a>
+                        <span class="badge badge-{{ 'info' if error.supplier_type == 'material' else 'warning' }}">
+                            {{ error.supplier_type|title }}
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="row mb-3">
+                    <div class="col">
+                        <strong>Reported By:</strong> {{ error.reported_by_name or 'N/A' }}
+                    </div>
+                    <div class="col">
+                        <strong>Affected Qty:</strong> {{ error.affected_quantity or 'N/A' }}
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <strong>Description:</strong>
+                    <div class="description-box">{{ error.description }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Investigation & Resolution -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>Investigation & Resolution</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('error_report_update', error_id=error.id) }}">
+                    <input type="hidden" name="action" value="update">
+                    
+                    <div class="form-group">
+                        <label for="disposition">Disposition</label>
+                        <select name="disposition" id="disposition" class="form-control">
+                            <option value="">-- Select --</option>
+                            <option value="rework" {{ 'selected' if error.disposition == 'rework' }}>Rework</option>
+                            <option value="scrap" {{ 'selected' if error.disposition == 'scrap' }}>Scrap</option>
+                            <option value="return_to_supplier" {{ 'selected' if error.disposition == 'return_to_supplier' }}>Return to Supplier</option>
+                            <option value="use_as_is" {{ 'selected' if error.disposition == 'use_as_is' }}>Use As-Is (with approval)</option>
+                            <option value="sort_inspect" {{ 'selected' if error.disposition == 'sort_inspect' }}>Sort & Inspect</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="root_cause">Root Cause Analysis</label>
+                        <textarea name="root_cause" id="root_cause" class="form-control" rows="3"
+                                  placeholder="Describe the root cause of this issue">{{ error.root_cause or '' }}</textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="corrective_action">Corrective Action</label>
+                        <textarea name="corrective_action" id="corrective_action" class="form-control" rows="3"
+                                  placeholder="What corrective actions have been taken or are required?">{{ error.corrective_action or '' }}</textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="assigned_to">Assigned To</label>
+                        <select name="assigned_to" id="assigned_to" class="form-control">
+                            <option value="">-- Unassigned --</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}" {{ 'selected' if error.assigned_to == user.id }}>{{ user.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Attachments -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>Attachments</h3>
+            </div>
+            <div class="card-body">
+                {% if attachments %}
+                <div class="attachment-grid">
+                    {% for att in attachments %}
+                    <div class="attachment-item">
+                        {% if att.file_type == 'photo' %}
+                        <a href="/static/uploads/{{ att.file_path }}" target="_blank">
+                            <img src="/static/uploads/{{ att.file_path }}" alt="{{ att.file_name }}" class="attachment-thumb">
+                        </a>
+                        {% else %}
+                        <a href="/static/uploads/{{ att.file_path }}" target="_blank" class="attachment-doc">
+                            📄 {{ att.file_name }}
+                        </a>
+                        {% endif %}
+                        <small class="d-block">{{ att.file_name }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No attachments yet.</p>
+                {% endif %}
+                
+                <hr>
+                <form method="POST" action="{{ url_for('error_report_upload', error_id=error.id) }}" enctype="multipart/form-data">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="file">Upload Photo/Document</label>
+                            <input type="file" name="file" id="file" class="form-control" required accept="image/*,.pdf,.doc,.docx">
+                        </div>
+                        <div class="form-group">
+                            <label for="file_type">Type</label>
+                            <select name="file_type" id="file_type" class="form-control">
+                                <option value="photo">Photo</option>
+                                <option value="document">Document</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="align-self: flex-end;">
+                            <button type="submit" class="btn btn-secondary">Upload</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Status Actions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>Actions</h3>
+            </div>
+            <div class="card-body">
+                {% if error.status == 'open' %}
+                <form method="POST" action="{{ url_for('error_report_update', error_id=error.id) }}" class="mb-2">
+                    <input type="hidden" name="action" value="resolve">
+                    <button type="submit" class="btn btn-warning btn-block">Mark as Resolved</button>
+                </form>
+                {% elif error.status == 'resolved' %}
+                <form method="POST" action="{{ url_for('error_report_update', error_id=error.id) }}" class="mb-2">
+                    <input type="hidden" name="action" value="close">
+                    <button type="submit" class="btn btn-success btn-block">Close Error Report</button>
+                </form>
+                <form method="POST" action="{{ url_for('error_report_update', error_id=error.id) }}">
+                    <input type="hidden" name="action" value="reopen">
+                    <button type="submit" class="btn btn-secondary btn-block">Reopen</button>
+                </form>
+                {% else %}
+                <form method="POST" action="{{ url_for('error_report_update', error_id=error.id) }}">
+                    <input type="hidden" name="action" value="reopen">
+                    <button type="submit" class="btn btn-secondary btn-block">Reopen</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="card">
+            <div class="card-header">
+                <h3>Timeline</h3>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <strong>Created</strong>
+                        <small>{{ error.created_at[:16] }}</small>
+                    </div>
+                    {% if error.resolved_date %}
+                    <div class="timeline-item">
+                        <strong>Resolved</strong>
+                        <small>{{ error.resolved_date[:16] }}</small>
+                    </div>
+                    {% endif %}
+                    {% if error.closed_date %}
+                    <div class="timeline-item">
+                        <strong>Closed</strong>
+                        <small>{{ error.closed_date[:16] }}</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.description-box {
+    background: var(--bg-secondary);
+    padding: 1rem;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    margin-top: 0.5rem;
+}
+
+.attachment-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.attachment-item {
+    text-align: center;
+}
+
+.attachment-thumb {
+    max-width: 100%;
+    max-height: 150px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.attachment-doc {
+    display: block;
+    padding: 2rem;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.timeline {
+    border-left: 2px solid var(--border-color);
+    padding-left: 1rem;
+}
+
+.timeline-item {
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -1.35rem;
+    top: 0.25rem;
+    width: 10px;
+    height: 10px;
+    background: var(--primary-color);
+    border-radius: 50%;
+}
+
+.timeline-item strong {
+    display: block;
+}
+
+.timeline-item small {
+    color: var(--text-muted);
+}
+
+.btn-block {
+    width: 100%;
+}
+</style>
+{% endblock %}

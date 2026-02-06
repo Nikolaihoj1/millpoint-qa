@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Jobs - Millpoint QA{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Jobs</h1>
+    <div class="page-actions">
+        <a href="{{ url_for('job_create') }}" class="btn btn-primary">+ New Job</a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="GET" class="filter-form">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="search">Search</label>
+                    <input type="text" id="search" name="search" value="{{ search }}" 
+                           placeholder="PO #, Part #, Job #...">
+                </div>
+                <div class="filter-group">
+                    <label for="stage">Stage</label>
+                    <select id="stage" name="stage">
+                        <option value="">All Stages</option>
+                        {% for stage_val, stage_name in workflow_stages %}
+                        <option value="{{ stage_val }}" {% if current_stage == stage_val %}selected{% endif %}>
+                            {{ stage_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="customer">Customer</label>
+                    <select id="customer" name="customer">
+                        <option value="">All Customers</option>
+                        {% for customer in customers %}
+                        <option value="{{ customer.id }}" {% if current_customer|string == customer.id|string %}selected{% endif %}>
+                            {{ customer.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group filter-actions">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    <a href="{{ url_for('jobs_list') }}" class="btn btn-secondary">Clear</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Jobs Table -->
+<div class="card">
+    <div class="card-body">
+        {% if jobs %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Job #</th>
+                    <th>PO #</th>
+                    <th>Customer</th>
+                    <th>Part Number</th>
+                    <th>Qty</th>
+                    <th>Due Date</th>
+                    <th>Stage</th>
+                    <th>Dims</th>
+                    <th>Errors</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in jobs %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('job_detail', job_id=job.id) }}">
+                            <strong>{{ job.internal_job_number }}</strong>
+                        </a>
+                    </td>
+                    <td>{{ job.po_number }}</td>
+                    <td>{{ job.customer_name or '-' }}</td>
+                    <td>
+                        <a href="{{ url_for('quality_by_part', part=job.part_number) }}">{{ job.part_number }}</a>
+                        {% if job.part_revision %}<span class="badge badge-info badge-sm">{{ job.part_revision }}</span>{% endif %}
+                    </td>
+                    <td>{{ job.quantity }}</td>
+                    <td class="{% if job.due_date and job.due_date < now.strftime('%Y-%m-%d') and job.workflow_stage != 'complete' %}text-danger{% endif %}">
+                        {{ job.due_date or '-' }}
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ workflow_stage_colors.get(job.workflow_stage, 'gray') }}">
+                            {{ job.workflow_stage | replace('_', ' ') | title }}
+                        </span>
+                    </td>
+                    <td>{{ job.dimension_count }}</td>
+                    <td>
+                        {% if job.open_errors > 0 %}
+                        <span class="badge badge-red">{{ job.open_errors }}</span>
+                        {% else %}
+                        <span class="text-muted">0</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('job_detail', job_id=job.id) }}" class="btn btn-sm btn-secondary">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted text-center">No jobs found. <a href="{{ url_for('job_create') }}">Create your first job</a></p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.filter-form {
+    margin: 0;
+}
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+}
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.filter-group label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+.filter-group input,
+.filter-group select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-width: 150px;
+}
+.filter-actions {
+    flex-direction: row;
+    gap: 0.5rem;
+}
+</style>
+{% endblock %}

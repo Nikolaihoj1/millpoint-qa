@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}Suppliers - Millpoint QA{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Suppliers</h1>
+    <a href="{{ url_for('all_supplier_errors') }}" class="btn btn-secondary">View All Quality Issues</a>
+</div>
+
+<!-- Add Supplier Form -->
+<div class="card">
+    <div class="card-header">
+        <h2>Add New Supplier</h2>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('supplier_add') }}" class="supplier-form">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="name">Company Name *</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="supplier_type">Supplier Type *</label>
+                    <select id="supplier_type" name="supplier_type" required>
+                        <option value="material">Raw Material Supplier</option>
+                        <option value="external_process">External Process (Subcontractor)</option>
+                        <option value="both">Both</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="contact_person">Contact Person</label>
+                    <input type="text" id="contact_person" name="contact_person">
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email">
+                </div>
+                <div class="form-group">
+                    <label for="phone">Phone</label>
+                    <input type="text" id="phone" name="phone">
+                </div>
+                <div class="form-group">
+                    <label for="processes_offered">Processes Offered</label>
+                    <input type="text" id="processes_offered" name="processes_offered" 
+                           placeholder="e.g., anodize, paint, heat treatment">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Supplier</button>
+        </form>
+    </div>
+</div>
+
+<!-- Supplier List -->
+<div class="card">
+    <div class="card-header">
+        <h2>Suppliers</h2>
+    </div>
+    <div class="card-body">
+        {% if suppliers %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Company Name</th>
+                    <th>Type</th>
+                    <th>Contact</th>
+                    <th>Phone / Email</th>
+                    <th>Processes</th>
+                    <th>Usage</th>
+                    <th>Quality Issues</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for supplier in suppliers %}
+                <tr>
+                    <td><strong>{{ supplier.name }}</strong></td>
+                    <td>
+                        {% if supplier.supplier_type == 'material' %}
+                        <span class="badge badge-blue">Material</span>
+                        {% elif supplier.supplier_type == 'external_process' %}
+                        <span class="badge badge-purple">External Process</span>
+                        {% else %}
+                        <span class="badge badge-cyan">Both</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ supplier.contact_person or '-' }}</td>
+                    <td>
+                        {{ supplier.phone or '' }}
+                        {% if supplier.phone and supplier.email %}<br>{% endif %}
+                        {{ supplier.email or '' }}
+                        {% if not supplier.phone and not supplier.email %}-{% endif %}
+                    </td>
+                    <td>{{ supplier.processes_offered or '-' }}</td>
+                    <td>
+                        {% if supplier.material_count > 0 %}
+                        <span class="usage-badge">{{ supplier.material_count }} material</span>
+                        {% endif %}
+                        {% if supplier.process_count > 0 %}
+                        <span class="usage-badge">{{ supplier.process_count }} process</span>
+                        {% endif %}
+                        {% if supplier.material_count == 0 and supplier.process_count == 0 %}
+                        <span class="text-muted">Not used</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if supplier.error_count > 0 %}
+                        <a href="{{ url_for('supplier_error_history', supplier_id=supplier.id) }}" class="error-link">
+                            <span class="badge badge-{{ 'red' if supplier.open_error_count > 0 else 'green' }}">
+                                {{ supplier.error_count }} total
+                            </span>
+                            {% if supplier.open_error_count > 0 %}
+                            <span class="badge badge-yellow">{{ supplier.open_error_count }} open</span>
+                            {% endif %}
+                        </a>
+                        {% else %}
+                        <span class="text-muted">None</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" onclick="editSupplier({{ supplier.id }}, '{{ supplier.name }}', '{{ supplier.supplier_type }}', '{{ supplier.contact_person or '' }}', '{{ supplier.email or '' }}', '{{ supplier.phone or '' }}', '{{ supplier.processes_offered or '' }}', '{{ supplier.notes or '' }}')">Edit</button>
+                        <a href="{{ url_for('supplier_error_history', supplier_id=supplier.id) }}" class="btn btn-sm btn-outline">History</a>
+                        {% if supplier.material_count == 0 and supplier.process_count == 0 and supplier.error_count == 0 %}
+                        <form method="POST" action="{{ url_for('supplier_delete', supplier_id=supplier.id) }}" 
+                              style="display: inline;" onsubmit="return confirm('Delete this supplier?');">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">No suppliers yet. Add your first supplier above.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Edit Supplier Modal -->
+<div id="editSupplierModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Supplier</h3>
+            <button class="modal-close" onclick="hideEditSupplier()">&times;</button>
+        </div>
+        <form method="POST" id="editSupplierForm">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="edit_name">Company Name *</label>
+                    <input type="text" id="edit_name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_supplier_type">Supplier Type *</label>
+                    <select id="edit_supplier_type" name="supplier_type" required>
+                        <option value="material">Raw Material Supplier</option>
+                        <option value="external_process">External Process (Subcontractor)</option>
+                        <option value="both">Both</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit_contact_person">Contact Person</label>
+                    <input type="text" id="edit_contact_person" name="contact_person">
+                </div>
+                <div class="form-group">
+                    <label for="edit_email">Email</label>
+                    <input type="email" id="edit_email" name="email">
+                </div>
+                <div class="form-group">
+                    <label for="edit_phone">Phone</label>
+                    <input type="text" id="edit_phone" name="phone">
+                </div>
+                <div class="form-group">
+                    <label for="edit_processes_offered">Processes Offered</label>
+                    <input type="text" id="edit_processes_offered" name="processes_offered">
+                </div>
+                <div class="form-group">
+                    <label for="edit_notes">Notes</label>
+                    <textarea id="edit_notes" name="notes" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="hideEditSupplier()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.supplier-form .form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+.usage-badge {
+    display: inline-block;
+    padding: 0.15rem 0.4rem;
+    font-size: 0.7rem;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    margin-right: 0.25rem;
+}
+.error-link {
+    text-decoration: none;
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+.btn-outline:hover {
+    background: var(--bg-secondary);
+}
+.form-group textarea {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: inherit;
+    resize: vertical;
+}
+
+@media (max-width: 768px) {
+    .supplier-form .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function editSupplier(id, name, type, contact, email, phone, processes, notes) {
+    document.getElementById('editSupplierModal').style.display = 'flex';
+    document.getElementById('editSupplierForm').action = '/suppliers/' + id + '/edit';
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_supplier_type').value = type;
+    document.getElementById('edit_contact_person').value = contact;
+    document.getElementById('edit_email').value = email;
+    document.getElementById('edit_phone').value = phone;
+    document.getElementById('edit_processes_offered').value = processes;
+    document.getElementById('edit_notes').value = notes;
+}
+
+function hideEditSupplier() {
+    document.getElementById('editSupplierModal').style.display = 'none';
+}
+
+document.getElementById('editSupplierModal').addEventListener('click', function(e) {
+    if (e.target === this) hideEditSupplier();
+});
+</script>
+{% endblock %}

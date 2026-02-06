@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Report Supplier Quality Issue{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Report Supplier Quality Issue</h1>
+    {% if error_type == 'material' %}
+    <a href="{{ url_for('material_control_detail', mc_id=mc.id) }}" class="btn btn-secondary">Cancel</a>
+    {% else %}
+    <a href="{{ url_for('job_detail', job_id=ep.job_id) }}" class="btn btn-secondary">Cancel</a>
+    {% endif %}
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h3>{{ 'Material' if error_type == 'material' else 'External Process' }} Information</h3>
+    </div>
+    <div class="card-body">
+        {% if error_type == 'material' %}
+        <div class="row">
+            <div class="col">
+                <strong>Job:</strong> {{ mc.job_number }} - {{ mc.part_name }}
+            </div>
+            <div class="col">
+                <strong>Supplier:</strong> {{ mc.supplier_name or 'N/A' }}
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col">
+                <strong>Material:</strong> {{ mc.material_type }}
+            </div>
+            <div class="col">
+                <strong>Batch/Heat #:</strong> {{ mc.batch_number or 'N/A' }}
+            </div>
+        </div>
+        {% else %}
+        <div class="row">
+            <div class="col">
+                <strong>Job:</strong> {{ ep.job_number }} - {{ ep.part_name }}
+            </div>
+            <div class="col">
+                <strong>Supplier:</strong> {{ ep.supplier_name or 'N/A' }}
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col">
+                <strong>Process:</strong> {{ ep.process_type }}
+            </div>
+            <div class="col">
+                <strong>Quantity Sent:</strong> {{ ep.quantity_sent or 'N/A' }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<form method="POST" class="card">
+    <div class="card-header">
+        <h3>Error Details</h3>
+    </div>
+    <div class="card-body">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="severity">Severity <span class="required">*</span></label>
+                <select name="severity" id="severity" class="form-control" required>
+                    <option value="minor">Minor - Does not affect function</option>
+                    <option value="major" selected>Major - Affects quality/function</option>
+                    <option value="critical">Critical - Safety/legal issue</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="affected_quantity">Affected Quantity</label>
+                <input type="number" name="affected_quantity" id="affected_quantity" class="form-control" 
+                       min="0" placeholder="Number of affected parts">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description <span class="required">*</span></label>
+            <textarea name="description" id="description" class="form-control" rows="5" required
+                      placeholder="Describe the quality issue in detail. Include:
+- What was found wrong
+- Where it was discovered
+- Visual defects, dimensional issues, etc."></textarea>
+        </div>
+
+        <div class="alert alert-info">
+            <strong>Note:</strong> After creating this error report, you can:
+            <ul>
+                <li>Upload photos of the defect</li>
+                <li>Document root cause analysis</li>
+                <li>Record corrective actions from supplier</li>
+            </ul>
+        </div>
+    </div>
+    <div class="card-footer">
+        <button type="submit" class="btn btn-danger">Create Error Report</button>
+    </div>
+</form>
+{% endblock %}

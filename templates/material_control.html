@@ -1,0 +1,489 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if mc %}Material Control MC-{{ mc.id }}{% else %}New Material Control{% endif %} - Millpoint QA
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        {% if mc %}
+        <h1>Material Control MC-{{ mc.id }}</h1>
+        <span class="badge badge-{% if mc.status == 'approved' %}green{% elif mc.status == 'rejected' %}red{% else %}yellow{% endif %} badge-lg">
+            {{ mc.status | title }}
+        </span>
+        {% else %}
+        <h1>New Material Control</h1>
+        {% endif %}
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('job_detail', job_id=job.id) }}" class="btn btn-secondary">Back to Job</a>
+        {% if view_mode and mc %}
+        <a href="{{ url_for('material_control_edit', mc_id=mc.id) }}" class="btn btn-primary">Edit</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Job Info -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="job-info-row">
+            <div class="info-item">
+                <span class="info-label">Job</span>
+                <span class="info-value"><a href="{{ url_for('job_detail', job_id=job.id) }}">{{ job.internal_job_number }}</a></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">PO Number</span>
+                <span class="info-value">{{ job.po_number }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Part Number</span>
+                <span class="info-value">{{ job.part_number }}</span>
+            </div>
+            {% if mc %}
+            <div class="info-item">
+                <span class="info-label">Inspector</span>
+                <span class="info-value">{{ mc.inspector_username or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Date</span>
+                <span class="info-value">{{ mc.inspection_date[:16] if mc.inspection_date else '-' }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if view_mode %}
+<!-- View Mode -->
+<div class="detail-grid">
+    <!-- Material Details -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Material Details</h2>
+        </div>
+        <div class="card-body">
+            <div class="info-grid-2col">
+                <div class="info-item">
+                    <span class="info-label">Material Type / Grade</span>
+                    <span class="info-value"><strong>{{ mc.material_type }}</strong></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Supplier</span>
+                    <span class="info-value">{{ mc.supplier_name or '-' }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Batch / Heat Number</span>
+                    <span class="info-value">{{ mc.batch_number or '-' }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Quantity Received</span>
+                    <span class="info-value">{{ mc.quantity_received or '-' }}</span>
+                </div>
+            </div>
+
+            <h3 class="section-title">Verification Checks</h3>
+            <div class="checklist">
+                <div class="check-item {% if mc.certificate_matches %}check-pass{% else %}check-fail{% endif %}">
+                    <span class="check-icon">{% if mc.certificate_matches %}✓{% else %}✗{% endif %}</span>
+                    <span class="check-label">Certificate matches specification</span>
+                </div>
+                <div class="check-item {% if mc.visual_ok %}check-pass{% else %}check-fail{% endif %}">
+                    <span class="check-icon">{% if mc.visual_ok %}✓{% else %}✗{% endif %}</span>
+                    <span class="check-label">Visual inspection OK (no damage, correct surface condition)</span>
+                </div>
+                {% if mc.dimensions_ok is not none %}
+                <div class="check-item {% if mc.dimensions_ok %}check-pass{% else %}check-fail{% endif %}">
+                    <span class="check-icon">{% if mc.dimensions_ok %}✓{% else %}✗{% endif %}</span>
+                    <span class="check-label">Dimensional check OK</span>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if mc.notes %}
+            <h3 class="section-title">Notes</h3>
+            <p>{{ mc.notes }}</p>
+            {% endif %}
+
+            <!-- Status Actions -->
+            <div class="status-actions">
+                <form method="POST" action="{{ url_for('material_control_status', mc_id=mc.id) }}" class="status-form">
+                    <span class="status-label">Update Status:</span>
+                    <input type="hidden" name="status" value="approved">
+                    <button type="submit" class="btn btn-success {% if mc.status == 'approved' %}btn-active{% endif %}">
+                        Approve Material
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('material_control_status', mc_id=mc.id) }}" class="status-form">
+                    <input type="hidden" name="status" value="rejected">
+                    <button type="submit" class="btn btn-danger {% if mc.status == 'rejected' %}btn-active{% endif %}">
+                        Reject Material
+                    </button>
+                </form>
+                <a href="{{ url_for('material_error_report', mc_id=mc.id) }}" class="btn btn-warning">
+                    ⚠ Report Supplier Issue
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Certificates / Attachments -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Material Certificates</h2>
+        </div>
+        <div class="card-body">
+            <!-- Upload Form -->
+            <form method="POST" action="{{ url_for('material_control_upload', mc_id=mc.id) }}" 
+                  enctype="multipart/form-data" class="upload-form">
+                <div class="upload-row">
+                    <input type="file" name="file" accept="image/*,.pdf" required>
+                    <button type="submit" class="btn btn-primary">Upload Certificate</button>
+                </div>
+                <p class="help-text">Upload mill certificate, material test report, or COC.</p>
+            </form>
+
+            {% if attachments %}
+            <div class="attachments-list">
+                {% for att in attachments %}
+                <div class="attachment-item">
+                    {% if att.file_type == 'image' %}
+                    <a href="{{ url_for('static', filename='uploads/' + att.file_path) }}" target="_blank" class="attachment-preview">
+                        <img src="{{ url_for('static', filename='uploads/' + att.file_path) }}" alt="{{ att.file_name }}">
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('static', filename='uploads/' + att.file_path) }}" target="_blank" class="attachment-preview pdf-preview">
+                        <div class="pdf-icon">PDF</div>
+                    </a>
+                    {% endif %}
+                    <div class="attachment-details">
+                        <a href="{{ url_for('static', filename='uploads/' + att.file_path) }}" target="_blank">
+                            {{ att.file_name }}
+                        </a>
+                        <small class="text-muted">{{ att.uploaded_by_username }} - {{ att.uploaded_at[:10] if att.uploaded_at else '' }}</small>
+                    </div>
+                    <form method="POST" action="{{ url_for('material_attachment_delete', mc_id=mc.id, attachment_id=att.id) }}" 
+                          onsubmit="return confirm('Delete this attachment?');">
+                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted">No certificates uploaded yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- Input / Edit Mode -->
+<form method="POST" class="material-form">
+    <div class="card">
+        <div class="card-header">
+            <h2>{% if edit_mode %}Edit Material Control{% else %}Record Material Receipt{% endif %}</h2>
+        </div>
+        <div class="card-body">
+            <div class="form-grid-2col">
+                <div class="form-group">
+                    <label for="material_type">Material Type / Grade *</label>
+                    <input type="text" id="material_type" name="material_type" required
+                           placeholder="e.g., SS316L, Aluminium 6082-T6, Steel 4140"
+                           value="{{ mc.material_type if mc else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="supplier_id">Supplier</label>
+                    <select id="supplier_id" name="supplier_id">
+                        <option value="">-- Select Supplier --</option>
+                        {% for supplier in suppliers %}
+                        <option value="{{ supplier.id }}" {% if mc and mc.supplier_id == supplier.id %}selected{% endif %}>
+                            {{ supplier.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="batch_number">Batch / Heat Number</label>
+                    <input type="text" id="batch_number" name="batch_number"
+                           placeholder="For traceability"
+                           value="{{ mc.batch_number if mc else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="quantity_received">Quantity Received</label>
+                    <input type="text" id="quantity_received" name="quantity_received"
+                           placeholder="e.g., 2 bars, 1 plate 500x300x20"
+                           value="{{ mc.quantity_received if mc else '' }}">
+                </div>
+            </div>
+
+            <h3 class="section-title">Verification Checks</h3>
+            <div class="checkbox-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="certificate_matches" value="1" 
+                           {% if mc and mc.certificate_matches %}checked{% endif %}>
+                    Certificate matches specification
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" name="visual_ok" value="1"
+                           {% if mc and mc.visual_ok %}checked{% endif %}>
+                    Visual inspection OK (no damage, correct surface condition)
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" name="dimensions_checked" value="1" id="dimensions_checked"
+                           {% if mc and mc.dimensions_ok is not none %}checked{% endif %}
+                           onchange="toggleDimensionsOk()">
+                    Dimensional check performed
+                </label>
+                <div id="dimensions_ok_group" class="sub-checkbox" style="{% if not mc or mc.dimensions_ok is none %}display:none{% endif %}">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="dimensions_ok" value="1"
+                               {% if mc and mc.dimensions_ok %}checked{% endif %}>
+                        Dimensions within specification
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" rows="3" placeholder="Any observations or issues...">{{ mc.notes if mc else '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="status">Status</label>
+                <select id="status" name="status">
+                    <option value="pending" {% if not mc or mc.status == 'pending' %}selected{% endif %}>Pending Review</option>
+                    <option value="approved" {% if mc and mc.status == 'approved' %}selected{% endif %}>Approved</option>
+                    <option value="rejected" {% if mc and mc.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="{{ url_for('job_detail', job_id=job.id) }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">
+            {% if edit_mode %}Save Changes{% else %}Create Record{% endif %}
+        </button>
+    </div>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-title {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.badge-lg {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+}
+.job-info-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.info-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.info-value {
+    font-size: 0.9rem;
+}
+.mb-3 { margin-bottom: 1rem; }
+
+/* Detail Grid */
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 1.5rem;
+}
+.info-grid-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Section Title */
+.section-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 1.5rem 0 0.75rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Checklist */
+.checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.check-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+}
+.check-pass {
+    background-color: rgba(25, 135, 84, 0.1);
+}
+.check-fail {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+.check-icon {
+    font-size: 1.25rem;
+    font-weight: bold;
+}
+.check-pass .check-icon {
+    color: var(--success);
+}
+.check-fail .check-icon {
+    color: var(--danger);
+}
+
+/* Status Actions */
+.status-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+.status-form {
+    display: inline;
+}
+.btn-active {
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Attachments */
+.upload-form {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.upload-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.upload-row input[type="file"] {
+    flex: 1;
+}
+.help-text {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+}
+.attachments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.attachment-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+}
+.attachment-preview {
+    width: 60px;
+    height: 60px;
+    border-radius: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.attachment-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.pdf-preview {
+    background: var(--danger);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.pdf-icon {
+    color: white;
+    font-weight: bold;
+    font-size: 0.875rem;
+}
+.attachment-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+/* Form */
+.form-grid-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+.form-group textarea {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: inherit;
+    resize: vertical;
+}
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+.sub-checkbox {
+    margin-left: 1.5rem;
+    padding-left: 1rem;
+    border-left: 2px solid var(--border-color);
+}
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+    .detail-grid,
+    .form-grid-2col,
+    .info-grid-2col {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleDimensionsOk() {
+    const checked = document.getElementById('dimensions_checked').checked;
+    document.getElementById('dimensions_ok_group').style.display = checked ? 'block' : 'none';
+}
+</script>
+{% endblock %}

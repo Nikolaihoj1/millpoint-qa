@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if ec %}Exit Control EC-{{ ec.id }}{% else %}New Exit Control{% endif %} - Millpoint QA
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        {% if ec %}
+        <h1>Exit Control EC-{{ ec.id }}</h1>
+        <span class="badge badge-{% if ec.overall_status == 'passed' %}green{% elif ec.overall_status == 'failed' %}red{% elif ec.overall_status == 'in_progress' %}blue{% else %}yellow{% endif %} badge-lg">
+            {{ ec.overall_status | replace('_', ' ') | title }}
+        </span>
+        {% else %}
+        <h1>New Exit Control</h1>
+        {% endif %}
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('job_detail', job_id=job.id) }}" class="btn btn-secondary">Back to Job</a>
+    </div>
+</div>
+
+<!-- Job Info -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="job-info-row">
+            <div class="info-item">
+                <span class="info-label">Job</span>
+                <span class="info-value"><a href="{{ url_for('job_detail', job_id=job.id) }}">{{ job.internal_job_number }}</a></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">PO Number</span>
+                <span class="info-value">{{ job.po_number }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Part Number</span>
+                <span class="info-value">
+                    {{ job.part_number }}
+                    {% if job.part_revision %}<span class="badge badge-info">{{ job.part_revision }}</span>{% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Job Quantity</span>
+                <span class="info-value">{{ job.quantity }}</span>
+            </div>
+            {% if ec %}
+            <div class="info-item">
+                <span class="info-label">Inspector</span>
+                <span class="info-value">{{ ec.inspector_name or '-' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Date</span>
+                <span class="info-value">{{ ec.inspection_date[:10] if ec.inspection_date else '-' }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if view_mode %}
+<!-- View Mode - Sample Inspection -->
+<div class="stats-row mb-4">
+    <div class="stat-card">
+        <div class="stat-value">{{ total_samples }}</div>
+        <div class="stat-label">Total Samples</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ inspected }}</div>
+        <div class="stat-label">Inspected</div>
+    </div>
+    <div class="stat-card success">
+        <div class="stat-value">{{ passed }}</div>
+        <div class="stat-label">Passed</div>
+    </div>
+    <div class="stat-card danger">
+        <div class="stat-value">{{ failed }}</div>
+        <div class="stat-label">Failed</div>
+    </div>
+</div>
+
+<!-- Progress Bar -->
+<div class="progress-bar-container mb-4">
+    <div class="progress-bar">
+        <div class="progress-fill success" style="width: {{ (passed / total_samples * 100) if total_samples > 0 else 0 }}%"></div>
+        <div class="progress-fill danger" style="width: {{ (failed / total_samples * 100) if total_samples > 0 else 0 }}%"></div>
+    </div>
+    <div class="progress-label">
+        {{ inspected }} of {{ total_samples }} inspected
+        {% if inspected == total_samples and total_samples > 0 %}
+        - <strong>{{ 'ALL PASSED' if failed == 0 else 'FAILURES DETECTED' }}</strong>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Sample List -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h2>Sample Inspections</h2>
+        <span class="text-muted">First 5 parts + every 10th part</span>
+    </div>
+    <div class="card-body">
+        <div class="samples-grid">
+            {% for sample in samples %}
+            <div class="sample-card {% if sample.overall_pass == 1 %}sample-pass{% elif sample.overall_pass == 0 %}sample-fail{% else %}sample-pending{% endif %}">
+                <div class="sample-header">
+                    <span class="sample-number">Part #{{ sample.part_number }}</span>
+                    {% if sample.overall_pass is not none %}
+                    <span class="sample-status">{{ 'PASS' if sample.overall_pass else 'FAIL' }}</span>
+                    {% else %}
+                    <span class="sample-status pending">Pending</span>
+                    {% endif %}
+                </div>
+                
+                {% if sample.overall_pass is not none %}
+                <!-- Already inspected -->
+                <div class="sample-results">
+                    <div class="check-item {% if sample.dimensions_ok %}pass{% else %}fail{% endif %}">
+                        <span class="check-icon">{% if sample.dimensions_ok %}✓{% else %}✗{% endif %}</span>
+                        Dimensions
+                    </div>
+                    <div class="check-item {% if sample.visual_ok %}pass{% else %}fail{% endif %}">
+                        <span class="check-icon">{% if sample.visual_ok %}✓{% else %}✗{% endif %}</span>
+                        Visual
+                    </div>
+                    <div class="check-item {% if sample.surface_ok %}pass{% else %}fail{% endif %}">
+                        <span class="check-icon">{% if sample.surface_ok %}✓{% else %}✗{% endif %}</span>
+                        Surface
+                    </div>
+                </div>
+                {% if sample.notes %}
+                <div class="sample-notes">{{ sample.notes }}</div>
+                {% endif %}
+                {% else %}
+                <!-- Inspection Form -->
+                <form method="POST" action="{{ url_for('exit_control_record_sample', ec_id=ec.id, sample_id=sample.id) }}" class="sample-form">
+                    <div class="check-inputs">
+                        <label class="check-input">
+                            <input type="checkbox" name="dimensions_ok" value="1" checked>
+                            <span>Dimensions OK</span>
+                        </label>
+                        <label class="check-input">
+                            <input type="checkbox" name="visual_ok" value="1" checked>
+                            <span>Visual OK</span>
+                        </label>
+                        <label class="check-input">
+                            <input type="checkbox" name="surface_ok" value="1" checked>
+                            <span>Surface OK</span>
+                        </label>
+                    </div>
+                    <input type="text" name="notes" placeholder="Notes (optional)" class="sample-notes-input">
+                    <button type="submit" class="btn btn-sm btn-primary">Record</button>
+                </form>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Add More Samples -->
+{% if ec.overall_status == 'in_progress' %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h3>Add Additional Samples</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('exit_control_add_samples', ec_id=ec.id) }}" class="add-samples-form">
+            <div class="form-row">
+                <div class="form-group flex-grow">
+                    <input type="text" name="part_numbers" placeholder="Enter part numbers (e.g., 12 25 37)" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-secondary">Add Samples</button>
+            </div>
+            <small class="text-muted">Add specific part numbers to inspect (1 to {{ ec.lot_quantity }})</small>
+        </form>
+    </div>
+</div>
+
+<!-- Complete Button -->
+{% if inspected == total_samples and total_samples > 0 %}
+<div class="card">
+    <div class="card-body text-center">
+        <form method="POST" action="{{ url_for('exit_control_complete', ec_id=ec.id) }}">
+            <p>All {{ total_samples }} samples have been inspected.</p>
+            {% if failed > 0 %}
+            <p class="text-danger"><strong>{{ failed }} sample(s) failed inspection.</strong></p>
+            {% endif %}
+            <button type="submit" class="btn btn-lg btn-{{ 'success' if failed == 0 else 'warning' }}">
+                Complete Exit Control
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+{% else %}
+<!-- Create Mode -->
+<form method="POST" class="exit-form">
+    <div class="card">
+        <div class="card-header">
+            <h2>Start Exit Control Inspection</h2>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="lot_quantity">Lot Quantity to Inspect</label>
+                <input type="number" id="lot_quantity" name="lot_quantity" 
+                       value="{{ job.quantity }}" min="1" max="{{ job.quantity }}"
+                       class="form-control" style="max-width: 200px;"
+                       onchange="updatePreview(this.value)">
+                <small class="text-muted">Total parts in this production lot</small>
+            </div>
+
+            <div class="sampling-preview">
+                <h3>Sampling Plan</h3>
+                <p class="text-muted">Based on the rule: First 5 parts + every 10th part after</p>
+                
+                <div class="preview-stats">
+                    <div class="preview-stat">
+                        <span class="stat-value" id="preview-count">{{ preview_samples|length }}</span>
+                        <span class="stat-label">Samples Required</span>
+                    </div>
+                </div>
+                
+                <div class="preview-parts" id="preview-parts">
+                    <span class="part-badge">Parts to inspect:</span>
+                    {% for num in preview_samples %}
+                    <span class="part-num">#{{ num }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" rows="2" class="form-control"
+                          placeholder="Any notes about this inspection..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="{{ url_for('job_detail', job_id=job.id) }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Start Exit Control</button>
+    </div>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-title {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.badge-lg {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+}
+.job-info-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.info-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+.info-value {
+    font-size: 0.9rem;
+}
+.mb-3 { margin-bottom: 1rem; }
+.mb-4 { margin-bottom: 1.5rem; }
+
+/* Stats */
+.stats-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.stat-card {
+    background: var(--bg-secondary);
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+    min-width: 100px;
+}
+.stat-card.success { border-left: 4px solid var(--success); }
+.stat-card.danger { border-left: 4px solid var(--danger); }
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: bold;
+}
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+/* Progress Bar */
+.progress-bar-container {
+    background: var(--bg-secondary);
+    padding: 1rem;
+    border-radius: 8px;
+}
+.progress-bar {
+    height: 24px;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+}
+.progress-fill {
+    height: 100%;
+    transition: width 0.3s;
+}
+.progress-fill.success { background: var(--success); }
+.progress-fill.danger { background: var(--danger); }
+.progress-label {
+    margin-top: 0.5rem;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+/* Samples Grid */
+.samples-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+}
+.sample-card {
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    background: var(--bg-primary);
+}
+.sample-card.sample-pass {
+    border-color: var(--success);
+    background: rgba(25, 135, 84, 0.05);
+}
+.sample-card.sample-fail {
+    border-color: var(--danger);
+    background: rgba(220, 53, 69, 0.05);
+}
+.sample-card.sample-pending {
+    border-color: var(--border-color);
+}
+.sample-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.sample-number {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+.sample-status {
+    font-weight: bold;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+.sample-pass .sample-status { color: var(--success); }
+.sample-fail .sample-status { color: var(--danger); }
+.sample-status.pending { color: var(--text-secondary); }
+
+/* Check Items */
+.sample-results {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.check-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+}
+.check-item.pass { color: var(--success); }
+.check-item.fail { color: var(--danger); }
+.check-icon {
+    font-weight: bold;
+}
+.sample-notes {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* Sample Form */
+.sample-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.check-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.check-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.sample-notes-input {
+    padding: 0.375rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.8rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* Add Samples Form */
+.add-samples-form .form-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.flex-grow { flex: 1; }
+
+/* Sampling Preview */
+.sampling-preview {
+    background: var(--bg-secondary);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin: 1.5rem 0;
+}
+.sampling-preview h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+}
+.preview-stats {
+    margin: 1rem 0;
+}
+.preview-stat {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--bg-primary);
+    padding: 1rem 2rem;
+    border-radius: 8px;
+}
+.preview-parts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+.part-badge {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+.part-num {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.text-center { text-align: center; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function calculateSamples(qty) {
+    const samples = [];
+    // First 5
+    for (let i = 1; i <= Math.min(5, qty); i++) {
+        samples.push(i);
+    }
+    // Every 10th after part 5
+    if (qty > 5) {
+        let part = 15;
+        while (part <= qty) {
+            samples.push(part);
+            part += 10;
+        }
+    }
+    return samples;
+}
+
+function updatePreview(qty) {
+    qty = parseInt(qty) || 0;
+    const samples = calculateSamples(qty);
+    
+    document.getElementById('preview-count').textContent = samples.length;
+    
+    const partsDiv = document.getElementById('preview-parts');
+    partsDiv.innerHTML = '<span class="part-badge">Parts to inspect:</span>';
+    samples.forEach(num => {
+        partsDiv.innerHTML += `<span class="part-num">#${num}</span>`;
+    });
+}
+</script>
+{% endblock %}

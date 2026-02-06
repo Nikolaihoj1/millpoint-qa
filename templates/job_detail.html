@@ -1,0 +1,764 @@
+{% extends "base.html" %}
+
+{% block title %}{{ job.internal_job_number }} - Millpoint QA{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h1>{{ job.internal_job_number }}</h1>
+        <span class="badge badge-{{ workflow_stage_colors.get(job.workflow_stage, 'gray') }} badge-lg">
+            {{ job.workflow_stage | replace('_', ' ') | title }}
+        </span>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('job_edit', job_id=job.id) }}" class="btn btn-secondary">Edit Job</a>
+    </div>
+</div>
+
+<!-- Job Info Card -->
+<div class="detail-grid">
+    <div class="card">
+        <div class="card-header">
+            <h2>Job Information</h2>
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">PO Number</span>
+                    <span class="info-value">{{ job.po_number }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Customer</span>
+                    <span class="info-value">{{ job.customer_name or '-' }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Part Number</span>
+                    <span class="info-value">
+                        <a href="{{ url_for('quality_by_part', part_id=job.part_id if job.part_id else None, part=job.part_number) }}" title="View quality history for this part">
+                            {{ job.part_number }}
+                        </a>
+                        {% if job.part_revision %}<span class="badge badge-info">Rev {{ job.part_revision }}</span>{% endif %}
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Quantity</span>
+                    <span class="info-value">{{ job.quantity }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Due Date</span>
+                    <span class="info-value {% if job.due_date and job.due_date < now.strftime('%Y-%m-%d') and job.workflow_stage != 'complete' %}text-danger{% endif %}">
+                        {{ job.due_date or '-' }}
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Drawing</span>
+                    <span class="info-value">{{ job.drawing_number or '-' }}</span>
+                </div>
+            </div>
+            {% if job.part_description %}
+            <div class="info-item full-width">
+                <span class="info-label">Description</span>
+                <span class="info-value">{{ job.part_description }}</span>
+            </div>
+            {% endif %}
+            {% if job.special_requirements %}
+            <div class="info-item full-width">
+                <span class="info-label">Special Requirements</span>
+                <span class="info-value">{{ job.special_requirements }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Workflow Control -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Workflow Control</h2>
+        </div>
+        <div class="card-body">
+            <!-- Revision Check -->
+            <div class="workflow-section">
+                <h3>Revision Verification</h3>
+                {% if job.revision_verified %}
+                <p class="text-success">
+                    ✓ Verified by {{ job.verified_by_username }} 
+                    on {{ job.revision_verified_at[:10] if job.revision_verified_at else '' }}
+                </p>
+                {% else %}
+                <p class="text-muted">Drawing revision not yet verified.</p>
+                <form method="POST" action="{{ url_for('job_verify_revision', job_id=job.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-sm btn-success">Verify Revision</button>
+                </form>
+                {% endif %}
+            </div>
+
+            <!-- Stage Control -->
+            <div class="workflow-section">
+                <h3>Change Stage</h3>
+                <form method="POST" action="{{ url_for('job_update_stage', job_id=job.id) }}" class="stage-form">
+                    <select name="stage" class="stage-select">
+                        {% for stage_val, stage_name in workflow_stages %}
+                        <option value="{{ stage_val }}" {% if job.workflow_stage == stage_val %}selected{% endif %}>
+                            {{ stage_name }}
+                        </option>
+                        {% endfor %}
+                        <option value="on_hold" {% if job.workflow_stage == 'on_hold' %}selected{% endif %}>On Hold</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary">Update Stage</button>
+                </form>
+            </div>
+
+            <!-- Stage Progress -->
+            <div class="workflow-section">
+                <h3>Progress</h3>
+                <div class="stage-progress">
+                    {% set stages = ['po_receipt', 'revision_check', 'material_control', 'in_process', 'external_process', 'exit_control', 'complete'] %}
+                    {% set current_idx = stages.index(job.workflow_stage) if job.workflow_stage in stages else -1 %}
+                    {% for stage in stages %}
+                    <div class="stage-dot {% if stages.index(stage) <= current_idx %}active{% endif %} {% if stages.index(stage) == current_idx %}current{% endif %}"
+                         title="{{ stage | replace('_', ' ') | title }}">
+                    </div>
+                    {% if not loop.last %}<div class="stage-line {% if stages.index(stage) < current_idx %}active{% endif %}"></div>{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs for different sections -->
+<div class="tabs">
+    <button class="tab-btn active" onclick="showTab('dimensions')">Dimensions ({{ dimensions|length }})</button>
+    <button class="tab-btn" onclick="showTab('documents')">Documents ({{ documents|length }})</button>
+    <button class="tab-btn" onclick="showTab('measurements')">Measurements ({{ measurement_reports|length }})</button>
+    <button class="tab-btn" onclick="showTab('material')">Material ({{ material_controls|length }})</button>
+    <button class="tab-btn" onclick="showTab('external')">External Process ({{ external_processes|length }})</button>
+    <button class="tab-btn" onclick="showTab('exit')">Exit Control ({{ exit_controls|length }})</button>
+    <button class="tab-btn {% if error_reports|length > 0 %}tab-error{% endif %}" onclick="showTab('errors')">
+        Errors ({{ error_reports|length }})
+    </button>
+</div>
+
+<!-- Dimensions Tab -->
+<div id="tab-dimensions" class="tab-content active">
+    <div class="card">
+        <div class="card-header">
+            <h2>Critical Dimensions</h2>
+            <button class="btn btn-sm btn-primary" onclick="showAddDimension()">+ Add Dimension</button>
+        </div>
+        <div class="card-body">
+            {% if dimensions %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Dimension</th>
+                        <th>Nominal</th>
+                        <th>Tolerance</th>
+                        <th>Unit</th>
+                        <th>Drawing Ref</th>
+                        <th>Critical</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dim in dimensions %}
+                    <tr>
+                        <td>{{ dim.dimension_number }}</td>
+                        <td><strong>{{ dim.dimension_name }}</strong></td>
+                        <td>{{ dim.nominal_value }}</td>
+                        <td>
+                            {% if dim.tolerance_plus is not none or dim.tolerance_minus is not none %}
+                            +{{ dim.tolerance_plus or 0 }} / {{ dim.tolerance_minus or 0 }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>{{ dim.unit }}</td>
+                        <td>{{ dim.drawing_reference or '-' }}</td>
+                        <td>{% if dim.critical %}<span class="badge badge-red">Critical</span>{% endif %}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('job_delete_dimension', job_id=job.id, dim_id=dim.id) }}" 
+                                  style="display: inline;" onsubmit="return confirm('Delete this dimension?');">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted">No dimensions defined. Add dimensions to enable measurement tracking.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Add Dimension Form (hidden by default) -->
+    <div id="add-dimension-form" class="card" style="display: none;">
+        <div class="card-header">
+            <h2>Add Dimension</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('job_add_dimension', job_id=job.id) }}">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Dimension Name *</label>
+                        <input type="text" name="dimension_name" required placeholder="e.g., Ø25 H7">
+                    </div>
+                    <div class="form-group">
+                        <label>Nominal Value</label>
+                        <input type="number" step="any" name="nominal_value" placeholder="25.000">
+                    </div>
+                    <div class="form-group">
+                        <label>Tolerance +</label>
+                        <input type="number" step="any" name="tolerance_plus" placeholder="0.021">
+                    </div>
+                    <div class="form-group">
+                        <label>Tolerance -</label>
+                        <input type="number" step="any" name="tolerance_minus" placeholder="-0.021">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Unit</label>
+                        <select name="unit">
+                            <option value="mm">mm</option>
+                            <option value="inch">inch</option>
+                            <option value="degree">degree</option>
+                            <option value="go/nogo">Go/NoGo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Drawing Reference</label>
+                        <input type="text" name="drawing_reference" placeholder="e.g., Dim #1">
+                    </div>
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="critical" value="1"> Critical Dimension
+                        </label>
+                    </div>
+                </div>
+                <div class="form-actions-inline">
+                    <button type="button" class="btn btn-secondary" onclick="hideAddDimension()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Dimension</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Documents Tab -->
+<div id="tab-documents" class="tab-content">
+    <div class="card">
+        <div class="card-header">
+            <h2>Documents</h2>
+        </div>
+        <div class="card-body">
+            <!-- Upload Form -->
+            <form method="POST" action="{{ url_for('job_upload_document', job_id=job.id) }}" 
+                  enctype="multipart/form-data" class="upload-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>File</label>
+                        <input type="file" name="file" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select name="document_type">
+                            <option value="drawing">Drawing</option>
+                            <option value="specification">Specification</option>
+                            <option value="po">Purchase Order</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Revision</label>
+                        <input type="text" name="revision" placeholder="e.g., Rev C">
+                    </div>
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="btn btn-primary">Upload</button>
+                    </div>
+                </div>
+            </form>
+
+            {% if documents %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>File</th>
+                        <th>Type</th>
+                        <th>Revision</th>
+                        <th>Uploaded By</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doc in documents %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('static', filename='uploads/' + doc.file_path) }}" target="_blank">
+                                {{ doc.file_name }}
+                            </a>
+                        </td>
+                        <td><span class="badge badge-gray">{{ doc.document_type }}</span></td>
+                        <td>{{ doc.revision or '-' }}</td>
+                        <td>{{ doc.uploaded_by_username or '-' }}</td>
+                        <td>{{ doc.uploaded_at[:10] if doc.uploaded_at else '-' }}</td>
+                        <td>
+                            <a href="{{ url_for('static', filename='uploads/' + doc.file_path) }}" 
+                               class="btn btn-sm btn-secondary" target="_blank">View</a>
+                            <form method="POST" action="{{ url_for('delete_document', doc_id=doc.id) }}" 
+                                  style="display: inline;" onsubmit="return confirm('Delete this document?');">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted">No documents uploaded yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Measurements Tab -->
+<div id="tab-measurements" class="tab-content">
+    <div class="card">
+        <div class="card-header">
+            <h2>Measurement Reports</h2>
+            <a href="{{ url_for('measurement_report_create', job_id=job.id) }}" class="btn btn-sm btn-primary">+ New Report</a>
+        </div>
+        <div class="card-body">
+            {% if measurement_reports %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Report #</th>
+                        <th>Type</th>
+                        <th>Inspector</th>
+                        <th>Date</th>
+                        <th>Measurements</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in measurement_reports %}
+                    <tr>
+                        <td><a href="{{ url_for('measurement_report_detail', report_id=report.id) }}"><strong>MR-{{ report.id }}</strong></a></td>
+                        <td><span class="badge badge-blue">{{ report.report_type | replace('_', ' ') | title }}</span></td>
+                        <td>{{ report.inspector_username or '-' }}</td>
+                        <td>{{ report.inspection_date[:10] if report.inspection_date else '-' }}</td>
+                        <td>{{ report.measurement_count }}</td>
+                        <td>
+                            <span class="badge badge-{% if report.overall_status == 'pass' %}green{% elif report.overall_status == 'fail' %}red{% else %}yellow{% endif %}">
+                                {{ report.overall_status | title }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('measurement_report_detail', report_id=report.id) }}" class="btn btn-sm btn-secondary">View</a>
+                            <a href="{{ url_for('measurement_report_edit', report_id=report.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted">No measurement reports yet. <a href="{{ url_for('measurement_report_create', job_id=job.id) }}">Create a report</a> to start recording measurements.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Material Control Tab -->
+<div id="tab-material" class="tab-content">
+    <div class="card">
+        <div class="card-header">
+            <h2>Material Control</h2>
+            <a href="{{ url_for('material_control_create', job_id=job.id) }}" class="btn btn-sm btn-primary">+ New Inspection</a>
+        </div>
+        <div class="card-body">
+            {% if material_controls %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Material</th>
+                        <th>Supplier</th>
+                        <th>Batch #</th>
+                        <th>Inspector</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mc in material_controls %}
+                    <tr>
+                        <td><a href="{{ url_for('material_control_detail', mc_id=mc.id) }}"><strong>MC-{{ mc.id }}</strong></a></td>
+                        <td>{{ mc.material_type }}</td>
+                        <td>{{ mc.supplier_name or '-' }}</td>
+                        <td>{{ mc.batch_number or '-' }}</td>
+                        <td>{{ mc.inspector_username or '-' }}</td>
+                        <td>{{ mc.inspection_date[:10] if mc.inspection_date else '-' }}</td>
+                        <td>
+                            <span class="badge badge-{% if mc.status == 'approved' %}green{% elif mc.status == 'rejected' %}red{% else %}yellow{% endif %}">
+                                {{ mc.status | title }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('material_control_detail', mc_id=mc.id) }}" class="btn btn-sm btn-secondary">View</a>
+                            <a href="{{ url_for('material_control_edit', mc_id=mc.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted">No material control records yet. <a href="{{ url_for('material_control_create', job_id=job.id) }}">Create one</a> to record incoming material.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- External Process Tab -->
+<div id="tab-external" class="tab-content">
+    <div class="card">
+        <div class="card-header">
+            <h2>External Processes</h2>
+            <a href="{{ url_for('external_process_create', job_id=job.id) }}" class="btn btn-sm btn-primary">+ New Process</a>
+        </div>
+        <div class="card-body">
+            {% if external_processes %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Process</th>
+                        <th>Supplier</th>
+                        <th>Sent</th>
+                        <th>Expected Return</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ep in external_processes %}
+                    <tr>
+                        <td>
+                            <strong>{{ ep.process_type | title }}</strong>
+                            {% if ep.notes %}<br><small>{{ ep.notes[:50] }}{% if ep.notes|length > 50 %}...{% endif %}</small>{% endif %}
+                        </td>
+                        <td>{{ ep.supplier_name or '-' }}</td>
+                        <td>{{ ep.sent_date[:10] if ep.sent_date else '-' }}</td>
+                        <td>{{ ep.expected_return_date[:10] if ep.expected_return_date else '-' }}</td>
+                        <td>
+                            <span class="badge badge-{% if ep.status == 'approved' %}green{% elif ep.status == 'rejected' %}red{% elif ep.status == 'received' %}blue{% elif ep.status == 'sent' %}orange{% else %}yellow{% endif %}">
+                                {{ ep.status | title }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('external_process_detail', ep_id=ep.id) }}" class="btn btn-sm btn-secondary">View</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted">No external processes recorded.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Exit Control Tab -->
+<div id="tab-exit" class="tab-content">
+    <div class="card">
+        <div class="card-header">
+            <h2>Exit Control</h2>
+            <a href="{{ url_for('exit_control_create', job_id=job.id) }}" class="btn btn-sm btn-primary">+ New Exit Control</a>
+        </div>
+        <div class="card-body">
+            {% if exit_controls %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Lot Qty</th>
+                        <th>Samples</th>
+                        <th>Inspector</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ec in exit_controls %}
+                    <tr>
+                        <td><strong>EC-{{ ec.id }}</strong></td>
+                        <td>{{ ec.lot_quantity }}</td>
+                        <td>{{ ec.sample_count or '-' }}</td>
+                        <td>{{ ec.inspector_username or '-' }}</td>
+                        <td>{{ ec.inspection_date[:10] if ec.inspection_date else '-' }}</td>
+                        <td>
+                            <span class="badge badge-{% if ec.overall_status == 'passed' %}green{% elif ec.overall_status == 'failed' %}red{% elif ec.overall_status == 'in_progress' %}blue{% else %}yellow{% endif %}">
+                                {{ ec.overall_status | replace('_', ' ') | title }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('exit_control_detail', ec_id=ec.id) }}" class="btn btn-sm btn-secondary">View</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted">No exit control records yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Errors Tab -->
+<div id="tab-errors" class="tab-content">
+    <div class="card">
+        <div class="card-header">
+            <h2>Error Reports</h2>
+            <a href="{{ url_for('internal_error_report', job_id=job.id) }}" class="btn btn-sm btn-danger">+ Report Internal Error</a>
+        </div>
+        <div class="card-body">
+            {% if error_reports %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Stage</th>
+                        <th>Severity</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for er in error_reports %}
+                    <tr>
+                        <td><strong>NCR-{{ er.id }}</strong></td>
+                        <td>{{ er.workflow_stage | replace('_', ' ') | title }}</td>
+                        <td>
+                            <span class="badge badge-{% if er.severity == 'critical' %}red{% elif er.severity == 'major' %}orange{% else %}yellow{% endif %}">
+                                {{ er.severity | title }}
+                            </span>
+                        </td>
+                        <td>{{ er.description[:50] }}{% if er.description|length > 50 %}...{% endif %}</td>
+                        <td>
+                            <span class="badge badge-{% if er.status == 'closed' %}green{% elif er.status == 'open' %}red{% else %}blue{% endif %}">
+                                {{ er.status | title }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('error_report_detail', error_id=er.id) }}" class="btn btn-sm btn-secondary">View</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted">No error reports for this job.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-title {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.badge-lg {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+}
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.info-item.full-width {
+    grid-column: 1 / -1;
+    margin-top: 0.5rem;
+}
+.info-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.info-value {
+    font-size: 0.9rem;
+}
+.workflow-section {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.workflow-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+.workflow-section h3 {
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+}
+.stage-form {
+    display: flex;
+    gap: 0.5rem;
+}
+.stage-select {
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    flex: 1;
+}
+.stage-progress {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0;
+}
+.stage-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--border-color);
+}
+.stage-dot.active {
+    background: var(--success);
+}
+.stage-dot.current {
+    box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.3);
+}
+.stage-line {
+    flex: 1;
+    height: 2px;
+    background: var(--border-color);
+}
+.stage-line.active {
+    background: var(--success);
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 1rem;
+    overflow-x: auto;
+}
+.tab-btn {
+    padding: 0.75rem 1rem;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+}
+.tab-btn:hover {
+    color: var(--text-primary);
+}
+.tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+.tab-btn.tab-error {
+    color: var(--danger);
+}
+.tab-content {
+    display: none;
+}
+.tab-content.active {
+    display: block;
+}
+
+.form-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+.form-row .form-group {
+    flex: 1;
+    min-width: 150px;
+}
+.upload-form {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1rem;
+}
+.form-actions-inline {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
+}
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+}
+
+@media (max-width: 1024px) {
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+    .info-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    
+    // Show selected tab
+    document.getElementById('tab-' + tabName).classList.add('active');
+    event.target.classList.add('active');
+}
+
+function showAddDimension() {
+    document.getElementById('add-dimension-form').style.display = 'block';
+}
+
+function hideAddDimension() {
+    document.getElementById('add-dimension-form').style.display = 'none';
+}
+</script>
+{% endblock %}

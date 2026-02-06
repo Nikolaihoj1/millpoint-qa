@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Parts - Millpoint QA{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Parts</h1>
+    <div class="page-actions">
+        <form method="GET" action="{{ url_for('parts_list') }}" class="search-form">
+            <input type="text" name="search" placeholder="Search part number or revision..." 
+                   value="{{ search }}" class="form-control">
+            <button type="submit" class="btn btn-secondary">Search</button>
+            {% if search %}
+            <a href="{{ url_for('parts_list') }}" class="btn btn-secondary">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if parts %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Part Number</th>
+                    <th>Revision</th>
+                    <th>Description</th>
+                    <th>Jobs</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for part in parts %}
+                <tr>
+                    <td><strong>{{ part.part_number }}</strong></td>
+                    <td>
+                        {% if part.part_revision %}
+                        <span class="badge badge-info">{{ part.part_revision }}</span>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ part.part_description or '-' }}</td>
+                    <td>
+                        {% if part.job_count > 0 %}
+                        <a href="{{ url_for('quality_by_part', part_id=part.id, part=part.part_number) }}">{{ part.job_count }}</a>
+                        {% else %}
+                        0
+                        {% endif %}
+                    </td>
+                    <td>{{ part.created_at[:10] if part.created_at else '-' }}</td>
+                    <td>
+                        <a href="{{ url_for('part_detail', part_id=part.id) }}" class="btn btn-sm btn-secondary">View</a>
+                        <a href="{{ url_for('quality_by_part', part_id=part.id, part=part.part_number) }}" class="btn btn-sm btn-secondary">Quality History</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted text-center">No parts found{% if search %} matching "{{ search }}"{% endif %}.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.search-form {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.search-form .form-control {
+    min-width: 250px;
+}
+</style>
+{% endblock %}

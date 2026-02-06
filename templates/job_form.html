@@ -1,0 +1,500 @@
+{% extends "base.html" %}
+
+{% block title %}{% if edit_mode %}Edit Job{% else %}New Job{% endif %} - Millpoint QA{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if edit_mode %}Edit Job: {{ job.internal_job_number }}{% else %}Create New Job{% endif %}</h1>
+</div>
+
+<form method="POST" class="job-form">
+    <div class="form-grid">
+        <!-- Left Column: Job Details -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Job Details</h2>
+            </div>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="po_number">PO Number *</label>
+                        <input type="text" id="po_number" name="po_number" required
+                               value="{{ job.po_number if job else '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="customer_id">Customer</label>
+                        <select id="customer_id" name="customer_id">
+                            <option value="">-- Select Customer --</option>
+                            {% for customer in customers %}
+                            <option value="{{ customer.id }}" 
+                                    {% if job and job.customer_id == customer.id %}selected{% endif %}>
+                                {{ customer.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="part_number">Part Number *</label>
+                        <input type="text" id="part_number" name="part_number" required
+                               value="{{ job.part_number if job else '' }}"
+                               list="part_number_list" autocomplete="off"
+                               placeholder="Type existing or enter new part number">
+                        {% if existing_parts %}
+                        <datalist id="part_number_list">
+                            {% for p in existing_parts %}
+                            <option value="{{ p.part_number }}" data-revision="{{ p.part_revision or '' }}">
+                                {{ p.part_number }}{% if p.part_revision %} ({{ p.part_revision }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </datalist>
+                        {% endif %}
+                        <p class="field-help">New part numbers are created automatically when you save. Pick from the list or type a new one.</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="part_revision_input">Part Revision</label>
+                        <div class="revision-row">
+                            <select id="part_revision_select" class="revision-select" title="Load existing revision and last setup">
+                                <option value="">— Select part number first —</option>
+                            </select>
+                            <input type="text" id="part_revision_input" name="part_revision"
+                                   value="{{ job.part_revision if job else '' }}" placeholder="Or type new revision (e.g. A, 01)"
+                                   class="revision-input">
+                        </div>
+                        <p class="field-help">Revisions are tied to part number. Pick existing to load last run setup, or type a new revision.</p>
+                        <div id="setup-loaded-msg" class="setup-loaded-msg" style="display: none;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="quantity">Quantity *</label>
+                        <input type="number" id="quantity" name="quantity" required min="1"
+                               value="{{ job.quantity if job else '' }}">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="part_description">Part Description</label>
+                    <input type="text" id="part_description" name="part_description"
+                           value="{{ job.part_description if job else '' }}">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="due_date">Due Date</label>
+                        <input type="date" id="due_date" name="due_date"
+                               value="{{ job.due_date if job else '' }}">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="drawing_number">Drawing Number</label>
+                    <input type="text" id="drawing_number" name="drawing_number"
+                           value="{{ job.drawing_number if job else '' }}" placeholder="Optional - reference drawing">
+                </div>
+                
+                <div class="form-group">
+                    <label for="special_requirements">Special Requirements</label>
+                    <textarea id="special_requirements" name="special_requirements" rows="3">{{ job.special_requirements if job else '' }}</textarea>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column: Dimensions -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Critical Dimensions</h2>
+                {% if not edit_mode and recent_jobs %}
+                <div class="copy-dimensions">
+                    <select id="copy_from_job" class="copy-select">
+                        <option value="">Copy from job...</option>
+                        {% for rj in recent_jobs %}
+                        <option value="{{ rj.id }}">{{ rj.internal_job_number }} - {{ rj.part_number }} ({{ rj.dim_count }} dims)</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="copyDimensions()">Copy</button>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <p class="help-text">Define the dimensions that must be measured during manufacturing.</p>
+                
+                <div id="dimensions-container">
+                    {% if edit_mode and dimensions %}
+                        {% for dim in dimensions %}
+                        <div class="dimension-row" data-index="{{ loop.index0 }}">
+                            <div class="dim-field dim-name">
+                                <input type="text" name="dimension_name[]" value="{{ dim.dimension_name }}" placeholder="Dimension name">
+                            </div>
+                            <div class="dim-field dim-nominal">
+                                <input type="number" step="any" name="dimension_nominal[]" value="{{ dim.nominal_value }}" placeholder="Nominal">
+                            </div>
+                            <div class="dim-field dim-tol">
+                                <input type="number" step="any" name="dimension_tol_plus[]" value="{{ dim.tolerance_plus }}" placeholder="+Tol">
+                            </div>
+                            <div class="dim-field dim-tol">
+                                <input type="number" step="any" name="dimension_tol_minus[]" value="{{ dim.tolerance_minus }}" placeholder="-Tol">
+                            </div>
+                            <div class="dim-field dim-unit">
+                                <select name="dimension_unit[]">
+                                    <option value="mm" {% if dim.unit == 'mm' %}selected{% endif %}>mm</option>
+                                    <option value="inch" {% if dim.unit == 'inch' %}selected{% endif %}>inch</option>
+                                    <option value="degree" {% if dim.unit == 'degree' %}selected{% endif %}>deg</option>
+                                    <option value="go/nogo" {% if dim.unit == 'go/nogo' %}selected{% endif %}>Go/NoGo</option>
+                                </select>
+                            </div>
+                            <div class="dim-field dim-ref">
+                                <input type="text" name="dimension_ref[]" value="{{ dim.drawing_reference }}" placeholder="Ref">
+                            </div>
+                            <div class="dim-field dim-critical">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="dimension_critical[]" value="{{ loop.index0 }}" {% if dim.critical %}checked{% endif %}>
+                                    Critical
+                                </label>
+                            </div>
+                            <div class="dim-field dim-actions">
+                                <button type="button" class="btn btn-sm btn-danger" onclick="removeDimension(this)">×</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                
+                <button type="button" class="btn btn-secondary" onclick="addDimension()">+ Add Dimension</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-actions">
+        <a href="{{ url_for('jobs_list') }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">{% if edit_mode %}Save Changes{% else %}Create Job{% endif %}</button>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+.form-group textarea {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: inherit;
+    resize: vertical;
+}
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+.help-text {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+.field-help {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+    margin-bottom: 0;
+}
+.revision-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.revision-select {
+    min-width: 180px;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+.revision-input {
+    flex: 1;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+.setup-loaded-msg {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(25, 135, 84, 0.15);
+    color: var(--success, #198754);
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+.copy-dimensions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.copy-select {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* Dimension rows */
+.dimension-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    align-items: center;
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+}
+.dim-field input,
+.dim-field select {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.875rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+.dim-name { flex: 2; }
+.dim-name input { width: 100%; }
+.dim-nominal { flex: 1; }
+.dim-nominal input { width: 100%; }
+.dim-tol { flex: 0.7; }
+.dim-tol input { width: 100%; }
+.dim-unit { flex: 0.8; }
+.dim-unit select { width: 100%; }
+.dim-ref { flex: 1; }
+.dim-ref input { width: 100%; }
+.dim-critical { flex: 0.8; }
+.dim-actions { flex: 0 0 auto; }
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 1024px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    .dimension-row {
+        flex-wrap: wrap;
+    }
+    .dim-field {
+        flex: 1 1 45%;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let dimensionIndex = {{ dimensions|length if edit_mode and dimensions else 0 }};
+
+function addDimension(data = {}) {
+    const container = document.getElementById('dimensions-container');
+    const row = document.createElement('div');
+    row.className = 'dimension-row';
+    row.dataset.index = dimensionIndex;
+    
+    row.innerHTML = `
+        <div class="dim-field dim-name">
+            <input type="text" name="dimension_name[]" value="${data.dimension_name || ''}" placeholder="Dimension name (e.g., Ø25 H7)">
+        </div>
+        <div class="dim-field dim-nominal">
+            <input type="number" step="any" name="dimension_nominal[]" value="${data.nominal_value || ''}" placeholder="Nominal">
+        </div>
+        <div class="dim-field dim-tol">
+            <input type="number" step="any" name="dimension_tol_plus[]" value="${data.tolerance_plus || ''}" placeholder="+Tol">
+        </div>
+        <div class="dim-field dim-tol">
+            <input type="number" step="any" name="dimension_tol_minus[]" value="${data.tolerance_minus || ''}" placeholder="-Tol">
+        </div>
+        <div class="dim-field dim-unit">
+            <select name="dimension_unit[]">
+                <option value="mm" ${data.unit === 'mm' ? 'selected' : ''}>mm</option>
+                <option value="inch" ${data.unit === 'inch' ? 'selected' : ''}>inch</option>
+                <option value="degree" ${data.unit === 'degree' ? 'selected' : ''}>deg</option>
+                <option value="go/nogo" ${data.unit === 'go/nogo' ? 'selected' : ''}>Go/NoGo</option>
+            </select>
+        </div>
+        <div class="dim-field dim-ref">
+            <input type="text" name="dimension_ref[]" value="${data.drawing_reference || ''}" placeholder="Drawing ref">
+        </div>
+        <div class="dim-field dim-critical">
+            <label class="checkbox-label">
+                <input type="checkbox" name="dimension_critical[]" value="${dimensionIndex}" ${data.critical ? 'checked' : ''}>
+                Critical
+            </label>
+        </div>
+        <div class="dim-field dim-actions">
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeDimension(this)">×</button>
+        </div>
+    `;
+    
+    container.appendChild(row);
+    dimensionIndex++;
+}
+
+function removeDimension(button) {
+    button.closest('.dimension-row').remove();
+}
+
+function copyDimensions() {
+    const select = document.getElementById('copy_from_job');
+    const jobId = select.value;
+    if (!jobId) {
+        alert('Please select a job to copy from.');
+        return;
+    }
+    
+    fetch(`/api/jobs/${jobId}/dimensions`)
+        .then(response => response.json())
+        .then(dimensions => {
+            // Clear existing dimensions
+            document.getElementById('dimensions-container').innerHTML = '';
+            dimensionIndex = 0;
+            
+            // Add copied dimensions
+            dimensions.forEach(dim => addDimension(dim));
+            
+            if (dimensions.length === 0) {
+                alert('Source job has no dimensions.');
+            }
+        })
+        .catch(err => {
+            console.error('Error copying dimensions:', err);
+            alert('Failed to copy dimensions.');
+        });
+}
+
+// --- Part number / revision (revisions tied to part, load last setup) ---
+const partRevisionSelect = document.getElementById('part_revision_select');
+const partRevisionInput = document.getElementById('part_revision_input');
+const partNumberInput = document.getElementById('part_number');
+
+function fetchPartRevisions() {
+    const partNumber = (partNumberInput && partNumberInput.value || '').trim();
+    const select = partRevisionSelect;
+    select.innerHTML = '<option value="">— Select part number first —</option>';
+    if (!partNumber) {
+        partRevisionInput.value = '';
+        document.getElementById('setup-loaded-msg').style.display = 'none';
+        return Promise.resolve();
+    }
+
+    partRevisionInput.value = '';
+    document.getElementById('setup-loaded-msg').style.display = 'none';
+
+    return fetch('/api/part-revisions?part_number=' + encodeURIComponent(partNumber))
+        .then(r => r.json())
+        .then(parts => {
+            select.innerHTML = '<option value="">— New revision —</option>';
+            parts.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.part_revision;
+                opt.textContent = p.part_revision || '(No rev)';
+                opt.dataset.partId = p.part_id;
+                select.appendChild(opt);
+            });
+        })
+        .catch(err => console.error('Error fetching revisions:', err));
+}
+
+function loadLastSetup(partId) {
+    fetch('/api/part-last-setup?part_id=' + partId)
+        .then(r => r.json())
+        .then(setup => {
+            if (!setup) return;
+
+            if (setup.part_description !== undefined) {
+                const el = document.getElementById('part_description');
+                if (el) el.value = setup.part_description || '';
+            }
+            if (setup.drawing_number !== undefined) {
+                const el = document.getElementById('drawing_number');
+                if (el) el.value = setup.drawing_number || '';
+            }
+            if (setup.special_requirements !== undefined) {
+                const el = document.getElementById('special_requirements');
+                if (el) el.value = setup.special_requirements || '';
+            }
+
+            if (setup.dimensions && setup.dimensions.length > 0) {
+                const container = document.getElementById('dimensions-container');
+                container.innerHTML = '';
+                dimensionIndex = 0;
+                setup.dimensions.forEach(dim => addDimension(dim));
+            }
+
+            const msgEl = document.getElementById('setup-loaded-msg');
+            msgEl.textContent = 'Loaded setup from last run (Job ' + (setup.job_number || '') + '). You can change any fields as needed.';
+            msgEl.style.display = 'block';
+        })
+        .catch(err => console.error('Error loading last setup:', err));
+}
+
+if (partNumberInput) {
+    partNumberInput.addEventListener('blur', fetchPartRevisions);
+    partNumberInput.addEventListener('change', fetchPartRevisions);
+}
+
+if (partRevisionSelect) {
+    partRevisionSelect.addEventListener('change', function() {
+        const opt = this.selectedOptions[0];
+        if (opt && opt.value !== undefined) {
+            partRevisionInput.value = opt.value || '';
+            if (opt.dataset.partId) {
+                loadLastSetup(opt.dataset.partId);
+            } else {
+                document.getElementById('setup-loaded-msg').style.display = 'none';
+            }
+        }
+    });
+}
+
+// On load: if we have part number (edit or prefill), fetch revisions and sync dropdown
+document.addEventListener('DOMContentLoaded', function() {
+    if (partNumberInput && partNumberInput.value.trim()) {
+        fetchPartRevisions().then(function() {
+            // Sync revision dropdown to current value (e.g. when editing)
+            if (partRevisionSelect && partRevisionInput) {
+                partRevisionSelect.value = partRevisionInput.value || '';
+            }
+        });
+    }
+    // Add first empty dimension row on new job when no dimensions yet
+    {% if not edit_mode %}
+    if (!document.querySelector('#dimensions-container .dimension-row')) {
+        addDimension();
+    }
+    {% endif %}
+});
+</script>
+{% endblock %}

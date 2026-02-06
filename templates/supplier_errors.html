@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Error History - {{ supplier.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Supplier Error History</h1>
+    <a href="{{ url_for('suppliers_list') }}" class="btn btn-secondary">Back to Suppliers</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h2>{{ supplier.name }}</h2>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col">
+                <strong>Type:</strong>
+                <span class="badge badge-{{ 'info' if supplier.supplier_type == 'material' else 'warning' if supplier.supplier_type == 'external' else 'secondary' }}">
+                    {{ supplier.supplier_type|title }}
+                </span>
+            </div>
+            <div class="col">
+                <strong>Contact:</strong> {{ supplier.contact_person or 'N/A' }}
+            </div>
+            <div class="col">
+                <strong>Email:</strong> {{ supplier.email or 'N/A' }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="stats-row mb-4">
+    <div class="stat-card">
+        <div class="stat-value">{{ total }}</div>
+        <div class="stat-label">Total Errors</div>
+    </div>
+    <div class="stat-card warning">
+        <div class="stat-value">{{ open_count }}</div>
+        <div class="stat-label">Open</div>
+    </div>
+    <div class="stat-card success">
+        <div class="stat-value">{{ resolved_count }}</div>
+        <div class="stat-label">Resolved</div>
+    </div>
+</div>
+
+{% if errors %}
+<div class="card">
+    <div class="card-header">
+        <h3>Error Reports</h3>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Date</th>
+                    <th>Job</th>
+                    <th>Severity</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for error in errors %}
+                <tr>
+                    <td>ER-{{ '%04d'|format(error.id) }}</td>
+                    <td>{{ error.found_date[:10] }}</td>
+                    <td>
+                        <a href="{{ url_for('job_detail', job_id=error.job_id) }}">
+                            {{ error.job_number }}
+                        </a>
+                        <small class="text-muted d-block">{{ error.part_name }}</small>
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ 'danger' if error.severity == 'critical' else 'warning' if error.severity == 'major' else 'info' }}">
+                            {{ error.severity|title }}
+                        </span>
+                    </td>
+                    <td>{{ error.description[:100] }}{{ '...' if error.description|length > 100 else '' }}</td>
+                    <td>
+                        <span class="badge badge-{{ 'danger' if error.status == 'open' else 'success' if error.status == 'closed' else 'warning' }}">
+                            {{ error.status|title }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('error_report_detail', error_id=error.id) }}" class="btn btn-sm btn-primary">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center">
+        <p class="text-muted">No error reports for this supplier.</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

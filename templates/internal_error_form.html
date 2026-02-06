@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Report Internal Quality Issue - Millpoint QA{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Report Internal Quality Issue</h1>
+    <a href="{{ url_for('job_detail', job_id=job.id) }}" class="btn btn-secondary">Cancel</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h3>Job</h3>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col"><strong>Job:</strong> {{ job.internal_job_number }}</div>
+            <div class="col"><strong>PO:</strong> {{ job.po_number }}</div>
+            <div class="col"><strong>Part:</strong> {{ job.part_number }}{% if job.part_revision %} ({{ job.part_revision }}){% endif %}</div>
+        </div>
+    </div>
+</div>
+
+<form method="POST" class="card">
+    <div class="card-header">
+        <h3>Issue Details</h3>
+    </div>
+    <div class="card-body">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="severity">Severity <span class="required">*</span></label>
+                <select name="severity" id="severity" class="form-control" required>
+                    <option value="minor">Minor</option>
+                    <option value="major" selected>Major</option>
+                    <option value="critical">Critical</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="workflow_stage">Stage</label>
+                <select name="workflow_stage" id="workflow_stage" class="form-control">
+                    {% for stage_key, stage_label in workflow_stages %}
+                    <option value="{{ stage_key }}" {% if job.workflow_stage == stage_key %}selected{% endif %}>{{ stage_label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="affected_quantity">Affected Quantity</label>
+                <input type="number" name="affected_quantity" id="affected_quantity" class="form-control"
+                       min="0" placeholder="Optional">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description <span class="required">*</span></label>
+            <textarea name="description" id="description" class="form-control" rows="5" required
+                      placeholder="Describe the internal quality issue..."></textarea>
+        </div>
+
+        <p class="field-help">Admin and Quality Manager will be notified when you submit.</p>
+    </div>
+    <div class="card-footer">
+        <button type="submit" class="btn btn-danger">Create Internal Quality Report</button>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.col { flex: 1; min-width: 120px; }
+.mb-4 { margin-bottom: 1.5rem; }
+.form-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.form-group { flex: 1; min-width: 150px; }
+.form-group label { display: block; margin-bottom: 0.25rem; font-weight: 500; }
+.form-control { width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); }
+.card-footer { padding: 1rem; border-top: 1px solid var(--border-color); }
+.required { color: var(--danger); }
+.field-help { font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem; }
+</style>
+{% endblock %}

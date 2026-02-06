@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if mode == 'create' %}Add Equipment{% elif mode == 'edit' %}Edit Equipment{% elif mode == 'view' %}{{ equipment.name }}{% else %}Equipment{% endif %} - Millpoint QA
+{% endblock %}
+
+{% block content %}
+{% if mode == 'list' %}
+<!-- Equipment List -->
+<div class="page-header">
+    <h1>Equipment</h1>
+    <div class="page-actions">
+        {% if current_user.role in ['admin', 'quality_manager'] %}
+        <a href="{{ url_for('equipment_create') }}" class="btn btn-primary">+ Add Equipment</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-row mb-4">
+    <div class="stat-item">
+        <span class="stat-value">{{ stats.total }}</span>
+        <span class="stat-label">Total</span>
+    </div>
+    <div class="stat-item stat-success">
+        <span class="stat-value">{{ stats.ok }}</span>
+        <span class="stat-label">Calibrated</span>
+    </div>
+    <div class="stat-item stat-warning">
+        <span class="stat-value">{{ stats.due_soon }}</span>
+        <span class="stat-label">Due Soon</span>
+    </div>
+    <div class="stat-item stat-danger">
+        <span class="stat-value">{{ stats.overdue }}</span>
+        <span class="stat-label">Overdue</span>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if equipment %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Serial #</th>
+                    <th>Last Calibration</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for eq in equipment %}
+                <tr class="{% if eq.cal_status == 'overdue' %}row-danger{% elif eq.cal_status == 'due_soon' %}row-warning{% endif %}">
+                    <td><a href="{{ url_for('equipment_detail', equip_id=eq.id) }}"><strong>{{ eq.name }}</strong></a></td>
+                    <td>{{ eq.equipment_type or '-' }}</td>
+                    <td>{{ eq.serial_number or '-' }}</td>
+                    <td>{{ eq.last_calibration_date or 'Never' }}</td>
+                    <td>{{ eq.calibration_due_date or '-' }}</td>
+                    <td>
+                        {% if eq.cal_status == 'overdue' %}
+                        <span class="badge badge-red">Overdue</span>
+                        {% elif eq.cal_status == 'due_soon' %}
+                        <span class="badge badge-yellow">Due Soon</span>
+                        {% else %}
+                        <span class="badge badge-green">OK</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('equipment_detail', equip_id=eq.id) }}" class="btn btn-sm btn-secondary">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted text-center">No equipment added yet. <a href="{{ url_for('equipment_create') }}">Add your first equipment</a></p>
+        {% endif %}
+    </div>
+</div>
+
+{% elif mode == 'create' or mode == 'edit' %}
+<!-- Create/Edit Form -->
+<div class="page-header">
+    <h1>{% if mode == 'create' %}Add Equipment{% else %}Edit Equipment{% endif %}</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST" class="form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="name">Equipment Name *</label>
+                    <input type="text" id="name" name="name" required class="form-control"
+                           value="{{ equipment.name if equipment else '' }}"
+                           placeholder="e.g., Digital Caliper #1">
+                </div>
+                <div class="form-group">
+                    <label for="equipment_type">Type</label>
+                    <select id="equipment_type" name="equipment_type" class="form-control">
+                        <option value="">Select type...</option>
+                        {% set types = ['Caliper', 'Micrometer', 'Height Gauge', 'CMM', 'Bore Gauge', 
+                                       'Thread Gauge', 'Surface Plate', 'Gauge Block', 'Comparator', 'Other'] %}
+                        {% for t in types %}
+                        <option value="{{ t }}" {% if equipment and equipment.equipment_type == t %}selected{% endif %}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="serial_number">Serial Number</label>
+                    <input type="text" id="serial_number" name="serial_number" class="form-control"
+                           value="{{ equipment.serial_number if equipment else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="manufacturer">Manufacturer</label>
+                    <input type="text" id="manufacturer" name="manufacturer" class="form-control"
+                           value="{{ equipment.manufacturer if equipment else '' }}"
+                           placeholder="e.g., Mitutoyo, Starrett">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="calibration_interval">Calibration Interval (days)</label>
+                    <input type="number" id="calibration_interval" name="calibration_interval" 
+                           class="form-control" min="1" max="3650"
+                           value="{{ equipment.calibration_interval_days if equipment else 365 }}">
+                </div>
+                <div class="form-group">
+                    <label for="last_calibration_date">Last Calibration Date</label>
+                    <input type="date" id="last_calibration_date" name="last_calibration_date" 
+                           class="form-control"
+                           value="{{ equipment.last_calibration_date if equipment else '' }}">
+                </div>
+            </div>
+            
+            {% if mode == 'edit' %}
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="active" {% if equipment.active %}checked{% endif %}>
+                    Active (uncheck to retire equipment)
+                </label>
+            </div>
+            {% endif %}
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    {% if mode == 'create' %}Add Equipment{% else %}Save Changes{% endif %}
+                </button>
+                <a href="{% if mode == 'edit' %}{{ url_for('equipment_detail', equip_id=equipment.id) }}{% else %}{{ url_for('equipment_list') }}{% endif %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% elif mode == 'view' %}
+<!-- Equipment Detail View -->
+<div class="page-header">
+    <h1>{{ equipment.name }}</h1>
+    <div class="page-actions">
+        {% if current_user.role in ['admin', 'quality_manager'] %}
+        <a href="{{ url_for('equipment_edit', equip_id=equipment.id) }}" class="btn btn-secondary">Edit</a>
+        {% endif %}
+        <a href="{{ url_for('equipment_list') }}" class="btn btn-secondary">Back to List</a>
+    </div>
+</div>
+
+<!-- Calibration Status Banner -->
+<div class="status-banner status-{{ cal_status }} mb-4">
+    {% if cal_status == 'overdue' %}
+    <span class="status-icon">⚠️</span>
+    <span class="status-text">Calibration Overdue! Was due {{ equipment.calibration_due_date }}</span>
+    {% elif cal_status == 'due_soon' %}
+    <span class="status-icon">⏰</span>
+    <span class="status-text">Calibration due {{ equipment.calibration_due_date }}</span>
+    {% else %}
+    <span class="status-icon">✓</span>
+    <span class="status-text">Calibration OK - Next due {{ equipment.calibration_due_date or 'Not set' }}</span>
+    {% endif %}
+</div>
+
+<div class="detail-grid">
+    <!-- Equipment Info -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Equipment Details</h2>
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Type</span>
+                    <span class="info-value">{{ equipment.equipment_type or '-' }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Serial Number</span>
+                    <span class="info-value">{{ equipment.serial_number or '-' }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Manufacturer</span>
+                    <span class="info-value">{{ equipment.manufacturer or '-' }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Calibration Interval</span>
+                    <span class="info-value">{{ equipment.calibration_interval_days }} days</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Last Calibration</span>
+                    <span class="info-value">{{ equipment.last_calibration_date or 'Never' }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Next Due</span>
+                    <span class="info-value {% if cal_status == 'overdue' %}text-danger{% elif cal_status == 'due_soon' %}text-warning{% endif %}">
+                        {{ equipment.calibration_due_date or 'Not set' }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Record Calibration -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Record Calibration</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('equipment_calibrate', equip_id=equipment.id) }}" class="form">
+                <div class="form-group">
+                    <label for="calibration_date">Calibration Date</label>
+                    <input type="date" id="calibration_date" name="calibration_date" 
+                           class="form-control" value="{{ now.strftime('%Y-%m-%d') }}">
+                </div>
+                <p class="text-muted small">Next calibration will be due {{ equipment.calibration_interval_days }} days from this date.</p>
+                <button type="submit" class="btn btn-primary">Record Calibration</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Usage History -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h2>Recent Measurement Reports</h2>
+    </div>
+    <div class="card-body">
+        {% if reports %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Job</th>
+                    <th>Part</th>
+                    <th>Type</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for report in reports %}
+                <tr>
+                    <td>{{ report.created_at[:10] }}</td>
+                    <td><a href="{{ url_for('job_detail', job_id=report.job_id) }}">{{ report.internal_job_number }}</a></td>
+                    <td>{{ report.part_number }}</td>
+                    <td>{{ report.report_type | title }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted text-center">No measurement reports using this equipment yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.mb-4 { margin-bottom: 1.5rem; }
+.mt-4 { margin-top: 1.5rem; }
+
+/* Stats Row */
+.stats-row {
+    display: flex;
+    gap: 1rem;
+}
+.stat-item {
+    background: var(--bg-secondary);
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+    min-width: 100px;
+}
+.stat-item.stat-success { border-bottom: 3px solid var(--success); }
+.stat-item.stat-warning { border-bottom: 3px solid var(--warning); }
+.stat-item.stat-danger { border-bottom: 3px solid var(--danger); }
+.stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+/* Row highlights */
+.row-warning { background: rgba(255, 193, 7, 0.1); }
+.row-danger { background: rgba(220, 53, 69, 0.1); }
+
+/* Status Banner */
+.status-banner {
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.status-banner.status-ok {
+    background: rgba(40, 167, 69, 0.15);
+    color: var(--success);
+}
+.status-banner.status-due_soon {
+    background: rgba(255, 193, 7, 0.15);
+    color: var(--warning);
+}
+.status-banner.status-overdue {
+    background: rgba(220, 53, 69, 0.15);
+    color: var(--danger);
+}
+.status-icon { font-size: 1.5rem; }
+.status-text { font-weight: 500; }
+
+/* Detail Grid */
+.detail-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+}
+
+/* Info Grid */
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+.info-item {
+    padding: 0.75rem;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+}
+.info-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+}
+.info-value {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.small { font-size: 0.85rem; }
+.text-warning { color: var(--warning); }
+.text-danger { color: var(--danger); }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .stats-row { flex-wrap: wrap; }
+    .detail-grid { grid-template-columns: 1fr; }
+    .info-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}

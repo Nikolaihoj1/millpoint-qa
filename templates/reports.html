@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Millpoint QA{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Reports & Analytics</h1>
+</div>
+
+<!-- Date Range Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="filter-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="from">From Date</label>
+                    <input type="date" id="from" name="from" value="{{ from_date }}" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="to">To Date</label>
+                    <input type="date" id="to" name="to" value="{{ to_date }}" class="form-control">
+                </div>
+                <div class="form-group btn-group-filter">
+                    <button type="submit" class="btn btn-primary">Apply</button>
+                    <a href="{{ url_for('reports') }}" class="btn btn-secondary">Reset</a>
+                </div>
+            </div>
+            <div class="quick-filters">
+                <span class="quick-label">Quick:</span>
+                <a href="{{ url_for('reports', **{'from': (now - timedelta(days=7)).strftime('%Y-%m-%d'), 'to': now.strftime('%Y-%m-%d')}) }}" class="btn btn-sm btn-outline">Last 7 days</a>
+                <a href="{{ url_for('reports', **{'from': (now - timedelta(days=30)).strftime('%Y-%m-%d'), 'to': now.strftime('%Y-%m-%d')}) }}" class="btn btn-sm btn-outline">Last 30 days</a>
+                <a href="{{ url_for('reports', **{'from': (now - timedelta(days=90)).strftime('%Y-%m-%d'), 'to': now.strftime('%Y-%m-%d')}) }}" class="btn btn-sm btn-outline">Last 90 days</a>
+                <a href="{{ url_for('reports', **{'from': now.strftime('%Y-01-01'), 'to': now.strftime('%Y-%m-%d')}) }}" class="btn btn-sm btn-outline">This Year</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="stats-grid-4 mb-4">
+    <div class="stat-card">
+        <div class="stat-icon">📦</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ job_stats.total_completed or 0 }}</div>
+            <div class="stat-label">Jobs Completed</div>
+            <div class="stat-sub">{{ job_stats.total_parts or 0 }} parts</div>
+        </div>
+    </div>
+    <div class="stat-card {% if error_stats.total_errors > 0 %}stat-warning{% endif %}">
+        <div class="stat-icon">⚠️</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ error_stats.total_errors or 0 }}</div>
+            <div class="stat-label">Error Reports</div>
+            <div class="stat-sub">{{ error_stats.critical_errors or 0 }} critical</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">✓</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ exit_stats.passed or 0 }}</div>
+            <div class="stat-label">Exit Passed</div>
+            {% set total_exit = (exit_stats.passed or 0) + (exit_stats.failed or 0) %}
+            {% if total_exit > 0 %}
+            <div class="stat-sub">{{ ((exit_stats.passed or 0) / total_exit * 100)|round(1) }}% pass rate</div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="stat-card {% if exit_stats.failed > 0 %}stat-danger{% endif %}">
+        <div class="stat-icon">✗</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ exit_stats.failed or 0 }}</div>
+            <div class="stat-label">Exit Failed</div>
+        </div>
+    </div>
+</div>
+
+<!-- Export Buttons -->
+<div class="export-bar mb-4">
+    <span class="export-label">Export Data:</span>
+    <a href="{{ url_for('export_jobs_csv', **{'from': from_date, 'to': to_date}) }}" class="btn btn-sm btn-secondary">
+        📥 Jobs CSV
+    </a>
+    <a href="{{ url_for('export_errors_csv', **{'from': from_date, 'to': to_date}) }}" class="btn btn-sm btn-secondary">
+        📥 Errors CSV
+    </a>
+</div>
+
+<div class="reports-grid">
+    <!-- Error Breakdown -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Error Breakdown</h2>
+        </div>
+        <div class="card-body">
+            <div class="error-breakdown">
+                <div class="breakdown-item">
+                    <div class="breakdown-bar">
+                        <div class="bar-fill material" style="width: {{ (error_stats.material_errors or 0) / (error_stats.total_errors or 1) * 100 }}%"></div>
+                    </div>
+                    <div class="breakdown-label">Material Supplier</div>
+                    <div class="breakdown-value">{{ error_stats.material_errors or 0 }}</div>
+                </div>
+                <div class="breakdown-item">
+                    <div class="breakdown-bar">
+                        <div class="bar-fill external" style="width: {{ (error_stats.external_errors or 0) / (error_stats.total_errors or 1) * 100 }}%"></div>
+                    </div>
+                    <div class="breakdown-label">External Process</div>
+                    <div class="breakdown-value">{{ error_stats.external_errors or 0 }}</div>
+                </div>
+                <div class="breakdown-item">
+                    <div class="breakdown-bar">
+                        <div class="bar-fill internal" style="width: {{ (error_stats.internal_errors or 0) / (error_stats.total_errors or 1) * 100 }}%"></div>
+                    </div>
+                    <div class="breakdown-label">Internal</div>
+                    <div class="breakdown-value">{{ error_stats.internal_errors or 0 }}</div>
+                </div>
+            </div>
+            
+            <div class="severity-summary">
+                <h3>By Severity</h3>
+                <div class="severity-badges">
+                    <span class="severity-badge critical">{{ error_stats.critical_errors or 0 }} Critical</span>
+                    <span class="severity-badge major">{{ error_stats.major_errors or 0 }} Major</span>
+                    <span class="severity-badge minor">{{ (error_stats.total_errors or 0) - (error_stats.critical_errors or 0) - (error_stats.major_errors or 0) }} Minor</span>
+                </div>
+            </div>
+            
+            <div class="resolution-rate">
+                <h3>Resolution</h3>
+                {% if error_stats.total_errors %}
+                {% set closed_pct = (error_stats.closed_errors or 0) / error_stats.total_errors * 100 %}
+                <div class="resolution-bar">
+                    <div class="resolution-fill" style="width: {{ closed_pct }}%"></div>
+                </div>
+                <div class="resolution-label">{{ closed_pct|round(1) }}% resolved ({{ error_stats.closed_errors or 0 }} of {{ error_stats.total_errors }})</div>
+                {% else %}
+                <p class="text-muted">No errors in period</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Supplier Performance -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Supplier Performance</h2>
+        </div>
+        <div class="card-body">
+            {% if supplier_performance %}
+            <table class="table table-compact">
+                <thead>
+                    <tr>
+                        <th>Supplier</th>
+                        <th>Type</th>
+                        <th>Errors</th>
+                        <th>Critical</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for supplier in supplier_performance %}
+                    <tr class="{% if supplier.error_count > 0 %}row-warning{% endif %}">
+                        <td>{{ supplier.name }}</td>
+                        <td><span class="badge badge-{{ 'blue' if supplier.supplier_type == 'material' else 'purple' }} badge-sm">{{ supplier.supplier_type[:3] }}</span></td>
+                        <td>
+                            {% if supplier.error_count > 0 %}
+                            <span class="text-warning">{{ supplier.error_count }}</span>
+                            {% else %}
+                            <span class="text-success">0</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if supplier.critical_count > 0 %}
+                            <span class="text-danger">{{ supplier.critical_count }}</span>
+                            {% else %}
+                            0
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted text-center">No supplier data</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="reports-grid mt-4">
+    <!-- Parts with Errors -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Parts with Most Errors</h2>
+        </div>
+        <div class="card-body">
+            {% if parts_with_errors %}
+            <table class="table table-compact">
+                <thead>
+                    <tr>
+                        <th>Part Number</th>
+                        <th>Revision</th>
+                        <th>Errors</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for part in parts_with_errors %}
+                    <tr>
+                        <td><a href="{{ url_for('quality_by_part', part=part.part_number) }}">{{ part.part_number }}</a></td>
+                        <td>{{ part.part_revision or '-' }}</td>
+                        <td><span class="badge badge-warning">{{ part.error_count }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted text-center">No errors in period</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Jobs by Customer -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Jobs by Customer</h2>
+        </div>
+        <div class="card-body">
+            {% if jobs_by_customer %}
+            <table class="table table-compact">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Jobs</th>
+                        <th>Total Qty</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cust in jobs_by_customer %}
+                    <tr>
+                        <td>{{ cust.name }}</td>
+                        <td>{{ cust.job_count }}</td>
+                        <td>{{ cust.total_qty or 0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted text-center">No jobs in period</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.mb-4 { margin-bottom: 1.5rem; }
+.mt-4 { margin-top: 1.5rem; }
+
+/* Filter Form */
+.filter-form .form-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+.btn-group-filter {
+    display: flex;
+    gap: 0.5rem;
+}
+.quick-filters {
+    margin-top: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.quick-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+.btn-outline:hover {
+    background: var(--bg-secondary);
+}
+
+/* Stats Grid */
+.stats-grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+}
+.stat-card {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.stat-card.stat-warning { border-left: 4px solid var(--warning); }
+.stat-card.stat-danger { border-left: 4px solid var(--danger); }
+.stat-icon {
+    font-size: 2rem;
+}
+.stat-content { flex: 1; }
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: bold;
+    line-height: 1.2;
+}
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+.stat-sub {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+}
+
+/* Export Bar */
+.export-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+}
+.export-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* Reports Grid */
+.reports-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+/* Error Breakdown */
+.error-breakdown {
+    margin-bottom: 1.5rem;
+}
+.breakdown-item {
+    display: grid;
+    grid-template-columns: 1fr 120px 40px;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+.breakdown-bar {
+    height: 20px;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.bar-fill {
+    height: 100%;
+    border-radius: 4px;
+}
+.bar-fill.material { background: #6366f1; }
+.bar-fill.external { background: #f59e0b; }
+.bar-fill.internal { background: #64748b; }
+.breakdown-label {
+    font-size: 0.85rem;
+}
+.breakdown-value {
+    font-weight: bold;
+    text-align: right;
+}
+
+/* Severity Summary */
+.severity-summary {
+    margin-bottom: 1.5rem;
+}
+.severity-summary h3 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+.severity-badges {
+    display: flex;
+    gap: 0.5rem;
+}
+.severity-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+.severity-badge.critical { background: rgba(220, 53, 69, 0.15); color: var(--danger); }
+.severity-badge.major { background: rgba(255, 193, 7, 0.15); color: var(--warning); }
+.severity-badge.minor { background: rgba(108, 117, 125, 0.15); color: var(--text-secondary); }
+
+/* Resolution Rate */
+.resolution-rate h3 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+.resolution-bar {
+    height: 12px;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    overflow: hidden;
+}
+.resolution-fill {
+    height: 100%;
+    background: var(--success);
+}
+.resolution-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+}
+
+/* Table */
+.table-compact {
+    font-size: 0.85rem;
+}
+.table-compact th, .table-compact td {
+    padding: 0.5rem;
+}
+.row-warning {
+    background: rgba(255, 193, 7, 0.1);
+}
+.badge-sm {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.4rem;
+}
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
+.text-danger { color: var(--danger); }
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .stats-grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .reports-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+    .stats-grid-4 { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block title %}Quality History{% if part_number %} - {{ part_number }}{% if part_revision %} Rev {{ part_revision }}{% endif %}{% endif %}{% endblock %}
+
+{% block content %}
+{% if part_number %}
+<!-- Detail view for a specific part -->
+<div class="page-header">
+    <div class="page-title">
+        <h1>{{ part_number }}</h1>
+        {% if part_revision %}
+        <span class="badge badge-info badge-lg">Rev {{ part_revision }}</span>
+        {% endif %}
+    </div>
+    <a href="{{ url_for('quality_by_part') }}" class="btn btn-secondary">Back to All Parts</a>
+</div>
+
+<div class="stats-row mb-4">
+    <div class="stat-card">
+        <div class="stat-value">{{ jobs|length }}</div>
+        <div class="stat-label">Jobs</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ revisions|length }}</div>
+        <div class="stat-label">Revisions</div>
+    </div>
+    <div class="stat-card warning">
+        <div class="stat-value">{{ errors|length }}</div>
+        <div class="stat-label">Total Errors</div>
+    </div>
+    <div class="stat-card danger">
+        <div class="stat-value">{{ errors|selectattr('status', 'equalto', 'open')|list|length }}</div>
+        <div class="stat-label">Open Errors</div>
+    </div>
+</div>
+
+<!-- Revision Filter -->
+{% if revisions|length > 1 %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h3>Filter by Revision</h3>
+    </div>
+    <div class="card-body">
+        <div class="revision-filter">
+            <a href="{{ url_for('quality_by_part', part_id=part.id if part else None, part=part_number) }}" 
+               class="btn btn-sm {{ 'btn-primary' if not part_revision else 'btn-secondary' }}">
+                All Revisions
+            </a>
+            {% for rev in revisions %}
+            <a href="{{ url_for('quality_by_part', part_id=part.id if part else None, part=part_number, rev=rev.part_revision or '') }}" 
+               class="btn btn-sm {{ 'btn-primary' if part_revision == (rev.part_revision or '') else 'btn-secondary' }}">
+                {{ rev.part_revision or '(No Rev)' }}
+                {% if rev.error_count > 0 %}<span class="badge badge-danger">{{ rev.error_count }}</span>{% endif %}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Jobs with this part -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h2>Jobs for {{ part_number }}{% if part_revision %} Rev {{ part_revision }}{% endif %}</h2>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Job #</th>
+                    <th>PO</th>
+                    <th>Revision</th>
+                    <th>Customer</th>
+                    <th>Qty</th>
+                    <th>Status</th>
+                    <th>Errors</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in jobs %}
+                <tr>
+                    <td><a href="{{ url_for('job_detail', job_id=job.id) }}">{{ job.job_number }}</a></td>
+                    <td>{{ job.po_number }}</td>
+                    <td><span class="badge badge-info">{{ job.part_revision or '-' }}</span></td>
+                    <td>{{ job.customer_name or '-' }}</td>
+                    <td>{{ job.quantity }}</td>
+                    <td>
+                        <span class="badge badge-{{ workflow_stage_colors.get(job.workflow_stage, 'secondary') }}">
+                            {{ job.workflow_stage|replace('_', ' ')|title }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if job.error_count > 0 %}
+                        <span class="badge badge-danger">{{ job.error_count }}</span>
+                        {% else %}
+                        <span class="text-muted">0</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('job_detail', job_id=job.id) }}" class="btn btn-sm btn-secondary">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Error Reports -->
+<div class="card">
+    <div class="card-header">
+        <h2>Quality Issues for {{ part_number }}{% if part_revision %} Rev {{ part_revision }}{% endif %}</h2>
+    </div>
+    {% if errors %}
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Date</th>
+                    <th>Job</th>
+                    <th>Revision</th>
+                    <th>Type</th>
+                    <th>Supplier</th>
+                    <th>Severity</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for error in errors %}
+                <tr>
+                    <td>ER-{{ '%04d'|format(error.id) }}</td>
+                    <td>{{ error.found_date[:10] }}</td>
+                    <td>
+                        <a href="{{ url_for('job_detail', job_id=error.job_id) }}">{{ error.job_number }}</a>
+                    </td>
+                    <td><span class="badge badge-info">{{ error.part_revision or '-' }}</span></td>
+                    <td>
+                        <span class="badge badge-{{ 'blue' if error.error_type == 'material_supplier' else 'purple' if error.error_type == 'external_supplier' else 'secondary' }}">
+                            {{ error.error_type|replace('_', ' ')|title if error.error_type else 'Internal' }}
+                        </span>
+                    </td>
+                    <td>{{ error.supplier_name or '-' }}</td>
+                    <td>
+                        <span class="badge badge-{{ 'danger' if error.severity == 'critical' else 'warning' if error.severity == 'major' else 'info' }}">
+                            {{ error.severity|title }}
+                        </span>
+                    </td>
+                    <td>{{ error.description[:50] }}{{ '...' if error.description|length > 50 else '' }}</td>
+                    <td>
+                        <span class="badge badge-{{ 'danger' if error.status == 'open' else 'success' if error.status == 'closed' else 'warning' }}">
+                            {{ error.status|title }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('error_report_detail', error_id=error.id) }}" class="btn btn-sm btn-primary">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card-body">
+        <p class="text-muted">No quality issues recorded for this part{% if part_revision %} revision{% endif %}.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% else %}
+<!-- List all parts with quality stats -->
+<div class="page-header">
+    <h1>Quality History by Part Number</h1>
+</div>
+
+<p class="mb-4">Track quality issues by part number across all revisions and jobs. Click a part number to see detailed history.</p>
+
+{% if parts %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Part Number</th>
+                    <th>Jobs</th>
+                    <th>Revisions</th>
+                    <th>Total Errors</th>
+                    <th>Open Errors</th>
+                    <th>Last Used</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for part in parts %}
+                <tr class="{{ 'table-row-warning' if part.open_error_count > 0 else '' }}">
+                    <td>
+                        <a href="{{ url_for('quality_by_part', part=part.part_number) }}">
+                            <strong>{{ part.part_number }}</strong>
+                        </a>
+                    </td>
+                    <td>{{ part.job_count }}</td>
+                    <td>{{ part.revision_count }}</td>
+                    <td>
+                        {% if part.error_count > 0 %}
+                        <span class="badge badge-warning">{{ part.error_count }}</span>
+                        {% else %}
+                        <span class="text-muted">0</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if part.open_error_count > 0 %}
+                        <span class="badge badge-danger">{{ part.open_error_count }}</span>
+                        {% else %}
+                        <span class="text-muted">0</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ part.last_used[:10] if part.last_used else '-' }}</td>
+                    <td>
+                        <a href="{{ url_for('quality_by_part', part=part.part_number) }}" class="btn btn-sm btn-secondary">View History</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center">
+        <p class="text-muted">No parts found.</p>
+    </div>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-title {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.badge-lg {
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+}
+.stats-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.stat-card {
+    background: var(--bg-secondary);
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+    min-width: 120px;
+}
+.stat-card.warning {
+    border-left: 4px solid var(--warning);
+}
+.stat-card.danger {
+    border-left: 4px solid var(--danger);
+}
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--text-primary);
+}
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+.mb-4 { margin-bottom: 1.5rem; }
+.table-row-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+.revision-filter {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+</style>
+{% endblock %}
