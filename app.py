@@ -1,5 +1,5 @@
 """
-Millpoint QA - Internal Quality Control Tool
+Millpoint QC - Ravnsgaard Metal A/S
 Flask application with SQLite database
 """
 
@@ -30,7 +30,7 @@ for subdir in ['drawings', 'photos', 'certificates', 'documents']:
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
-login_manager.login_message = 'Please log in to access this page.'
+login_manager.login_message = 'Log ind for at få adgang til denne side.'
 
 
 # =============================================================================
@@ -586,9 +586,9 @@ def login():
                 next_page = request.args.get('next')
                 return redirect(next_page or url_for('index'))
             else:
-                flash('Your account is inactive. Contact an administrator.', 'error')
+                flash('Din konto er inaktiv. Kontakt en administrator.', 'error')
         else:
-            flash('Invalid username or password.', 'error')
+            flash('Forkert brugernavn eller adgangskode.', 'error')
     
     return render_template('login.html')
 
@@ -597,7 +597,7 @@ def login():
 @login_required
 def logout():
     logout_user()
-    flash('You have been logged out.', 'info')
+    flash('Du er nu logget ud.', 'info')
     return redirect(url_for('login'))
 
 
@@ -613,7 +613,7 @@ def role_required(*roles):
             if not current_user.is_authenticated:
                 return redirect(url_for('login'))
             if current_user.role not in roles:
-                flash('You do not have permission to access this page.', 'error')
+                flash('Du har ikke tilladelse til at åbne denne side.', 'error')
                 return redirect(url_for('index'))
             return f(*args, **kwargs)
         return decorated_function
@@ -1007,7 +1007,7 @@ def equipment_create():
         ''', [name, equipment_type, serial_number, manufacturer, calibration_interval, last_calibration, due_date])
         db.commit()
         
-        flash(f'Equipment "{name}" created successfully', 'success')
+        flash(f'Udstyr "{name}" oprettet.', 'success')
         return redirect(url_for('equipment_detail', equip_id=cursor.lastrowid))
     
     return render_template('equipment.html', mode='create')
@@ -1019,7 +1019,7 @@ def equipment_detail(equip_id):
     """View equipment details and calibration history."""
     equipment = query_db('SELECT * FROM equipment WHERE id = ?', [equip_id], one=True)
     if not equipment:
-        flash('Equipment not found', 'error')
+        flash('Udstyr blev ikke fundet.', 'error')
         return redirect(url_for('equipment_list'))
     
     # Get measurement reports using this equipment (via measurements table)
@@ -1054,7 +1054,7 @@ def equipment_edit(equip_id):
     """Edit equipment."""
     equipment = query_db('SELECT * FROM equipment WHERE id = ?', [equip_id], one=True)
     if not equipment:
-        flash('Equipment not found', 'error')
+        flash('Udstyr blev ikke fundet.', 'error')
         return redirect(url_for('equipment_list'))
     
     if request.method == 'POST':
@@ -1086,7 +1086,7 @@ def equipment_edit(equip_id):
               last_calibration, due_date, active, equip_id])
         db.commit()
         
-        flash('Equipment updated successfully', 'success')
+        flash('Udstyr opdateret.', 'success')
         return redirect(url_for('equipment_detail', equip_id=equip_id))
     
     return render_template('equipment.html', equipment=equipment, mode='edit')
@@ -1099,7 +1099,7 @@ def equipment_calibrate(equip_id):
     """Record a calibration for equipment."""
     equipment = query_db('SELECT * FROM equipment WHERE id = ?', [equip_id], one=True)
     if not equipment:
-        flash('Equipment not found', 'error')
+        flash('Udstyr blev ikke fundet.', 'error')
         return redirect(url_for('equipment_list'))
     
     calibration_date = request.form.get('calibration_date', datetime.now().strftime('%Y-%m-%d'))
@@ -1119,7 +1119,7 @@ def equipment_calibrate(equip_id):
     ''', [calibration_date, due_date, equip_id])
     db.commit()
     
-    flash(f'Calibration recorded. Next due: {due_date}', 'success')
+    flash(f'Kalibrering registreret. Næste kalibrering: {due_date}', 'success')
     return redirect(url_for('equipment_detail', equip_id=equip_id))
 
 
@@ -1161,7 +1161,7 @@ def part_detail(part_id):
     """View part details and associated jobs."""
     part = query_db('SELECT * FROM parts WHERE id = ?', [part_id], one=True)
     if not part:
-        flash('Part not found', 'error')
+        flash('Delen blev ikke fundet.', 'error')
         return redirect(url_for('parts_list'))
     
     # Get all jobs using this part
@@ -1251,7 +1251,7 @@ def notification_mark_read(notification_id):
     notification = query_db('SELECT * FROM notifications WHERE id = ? AND user_id = ?', 
                            [notification_id, current_user.id], one=True)
     if not notification:
-        flash('Notification not found', 'error')
+        flash('Notifikation blev ikke fundet.', 'error')
         return redirect(url_for('notifications_list'))
     
     execute_db('UPDATE notifications SET read = 1 WHERE id = ?', [notification_id])
@@ -1271,7 +1271,7 @@ def notifications_mark_all_read():
     if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return {'success': True}
     
-    flash('All notifications marked as read', 'success')
+    flash('Alle notifikationer markeret som læst.', 'success')
     return redirect(url_for('notifications_list'))
 
 
@@ -1282,7 +1282,7 @@ def notification_delete(notification_id):
     notification = query_db('SELECT * FROM notifications WHERE id = ? AND user_id = ?', 
                          [notification_id, current_user.id], one=True)
     if not notification:
-        flash('Notification not found', 'error')
+        flash('Notifikation blev ikke fundet.', 'error')
         return redirect(url_for('notifications_list'))
     
     execute_db('DELETE FROM notifications WHERE id = ?', [notification_id])
@@ -1290,7 +1290,7 @@ def notification_delete(notification_id):
     if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return {'success': True}
     
-    flash('Notification deleted', 'success')
+    flash('Notifikation slettet.', 'success')
     return redirect(url_for('notifications_list'))
 
 
@@ -1345,13 +1345,13 @@ def admin_add_user():
     role = request.form.get('role', 'operator')
     
     if not username or not password:
-        flash('Username and password are required.', 'error')
+        flash('Brugernavn og adgangskode skal udfyldes.', 'error')
         return redirect(url_for('admin_users'))
     
     # Check if username exists
     existing = query_db('SELECT id FROM users WHERE username = ?', [username], one=True)
     if existing:
-        flash('Username already exists.', 'error')
+        flash('Brugernavnet findes allerede.', 'error')
         return redirect(url_for('admin_users'))
     
     password_hash = generate_password_hash(password)
@@ -1360,7 +1360,7 @@ def admin_add_user():
         VALUES (?, ?, ?, ?)
     ''', [username, email, password_hash, role])
     
-    flash(f'User "{username}" created successfully.', 'success')
+    flash(f'Bruger "{username}" oprettet.', 'success')
     return redirect(url_for('admin_users'))
 
 
@@ -1373,8 +1373,8 @@ def admin_toggle_user(user_id):
     if user:
         new_status = 0 if user['active'] else 1
         execute_db('UPDATE users SET active = ? WHERE id = ?', [new_status, user_id])
-        status_text = 'activated' if new_status else 'deactivated'
-        flash(f'User "{user["username"]}" {status_text}.', 'success')
+        status_text = 'aktiveret' if new_status else 'deaktiveret'
+        flash(f'Bruger "{user["username"]}" {status_text}.', 'success')
     return redirect(url_for('admin_users'))
 
 
@@ -1385,14 +1385,14 @@ def admin_reset_password(user_id):
     """Reset user password."""
     new_password = request.form.get('new_password', '')
     if not new_password:
-        flash('Password cannot be empty.', 'error')
+        flash('Adgangskode må ikke være tom.', 'error')
         return redirect(url_for('admin_users'))
     
     password_hash = generate_password_hash(new_password)
     execute_db('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash, user_id])
     
     user = query_db('SELECT username FROM users WHERE id = ?', [user_id], one=True)
-    flash(f'Password reset for user "{user["username"]}".', 'success')
+    flash(f'Adgangskode nulstillet for bruger "{user["username"]}".', 'success')
     return redirect(url_for('admin_users'))
 
 
@@ -1446,14 +1446,34 @@ def utility_processor():
         'now': datetime.now(),
         'timedelta': timedelta,
         'workflow_stages': [
-            ('po_receipt', 'PO Receipt'),
-            ('revision_check', 'Revision Check'),
-            ('material_control', 'Material Control'),
-            ('in_process', 'In-Process'),
-            ('external_process', 'External Process'),
-            ('exit_control', 'Exit Control'),
-            ('complete', 'Complete'),
+            ('po_receipt', 'Ordremodtagelse'),
+            ('revision_check', 'Revisionskontrol'),
+            ('material_control', 'Materialekontrol'),
+            ('in_process', 'I produktion'),
+            ('external_process', 'Ekstern proces'),
+            ('exit_control', 'Slutkontrol'),
+            ('complete', 'Færdig'),
         ],
+        'workflow_stage_labels_da': {
+            'po_receipt': 'Ordremodtagelse',
+            'revision_check': 'Revisionskontrol',
+            'material_control': 'Materialekontrol',
+            'in_process': 'I produktion',
+            'external_process': 'Ekstern proces',
+            'exit_control': 'Slutkontrol',
+            'complete': 'Færdig',
+            'on_hold': 'På hold',
+        },
+        'severity_labels_da': {
+            'critical': 'Kritisk',
+            'major': 'Alvorlig',
+            'minor': 'Mindre',
+        },
+        'error_type_labels_da': {
+            'internal': 'Intern',
+            'material_supplier': 'Materialeleverandør',
+            'external_supplier': 'Ekstern leverandør',
+        },
         'workflow_stage_colors': {
             'po_receipt': 'blue',
             'revision_check': 'purple',
@@ -1602,7 +1622,7 @@ def job_create():
         special_requirements = request.form.get('special_requirements', '').strip()
         
         if not po_number or not part_number or not quantity:
-            flash('PO number, part number, and quantity are required.', 'error')
+            flash('Ordrenummer, delenummer og antal skal udfyldes.', 'error')
             return redirect(url_for('job_create'))
         
         # Get or create part (ensures no duplicates; new parts created automatically)
@@ -1648,9 +1668,9 @@ def job_create():
         
         log_audit('create', 'job', job_id, f'Created job {internal_job_number}')
         if part_was_created:
-            flash(f'Job {internal_job_number} created. Part "{part_number}"' + (f' Rev {part_revision}' if part_revision else '') + ' was added to the parts list.', 'success')
+            flash(f'Ordre {internal_job_number} oprettet. Del "{part_number}"' + (f' rev. {part_revision}' if part_revision else '') + ' er tilføjet til deloversigten.', 'success')
         else:
-            flash(f'Job {internal_job_number} created successfully.', 'success')
+            flash(f'Ordre {internal_job_number} oprettet.', 'success')
         return redirect(url_for('job_detail', job_id=job_id))
     
     # GET request - show form
@@ -1687,7 +1707,7 @@ def job_detail(job_id):
     ''', [job_id], one=True)
     
     if not job:
-        flash('Job not found.', 'error')
+        flash('Ordren blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     # Get dimensions
@@ -1778,7 +1798,7 @@ def job_edit(job_id):
     """Edit an existing job."""
     job = query_db('SELECT * FROM jobs WHERE id = ?', [job_id], one=True)
     if not job:
-        flash('Job not found.', 'error')
+        flash('Ordren blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     if request.method == 'POST':
@@ -1807,9 +1827,9 @@ def job_edit(job_id):
         
         log_audit('update', 'job', job_id, f'Updated job {job["internal_job_number"]}')
         if part_was_created:
-            flash(f'Job updated. Part "{part_number}"' + (f' Rev {part_revision}' if part_revision else '') + ' was added to the parts list.', 'success')
+            flash(f'Ordre opdateret. Del "{part_number}"' + (f' rev. {part_revision}' if part_revision else '') + ' er tilføjet til deloversigten.', 'success')
         else:
-            flash('Job updated successfully.', 'success')
+            flash('Ordre opdateret.', 'success')
         return redirect(url_for('job_detail', job_id=job_id))
     
     customers = query_db('SELECT * FROM customers ORDER BY name')
@@ -1833,7 +1853,7 @@ def job_update_stage(job_id):
                     'external_process', 'exit_control', 'complete', 'on_hold']
     
     if new_stage not in valid_stages:
-        flash('Invalid workflow stage.', 'error')
+        flash('Ugyldigt arbejdsgangstrin.', 'error')
         return redirect(url_for('job_detail', job_id=job_id))
     
     old_stage = job['workflow_stage']
@@ -1852,7 +1872,7 @@ def job_update_stage(job_id):
     log_audit('status_change', 'job', job_id, 
               f'Changed stage from {old_stage} to {new_stage}')
     
-    flash(f'Job stage updated to {new_stage.replace("_", " ").title()}.', 'success')
+    flash(f'Ordrestadie opdateret til {new_stage.replace("_", " ").title()}.', 'success')
     return redirect(url_for('job_detail', job_id=job_id))
 
 
@@ -1862,7 +1882,7 @@ def job_verify_revision(job_id):
     """Mark drawing revision as verified."""
     job = query_db('SELECT * FROM jobs WHERE id = ?', [job_id], one=True)
     if not job:
-        flash('Job not found.', 'error')
+        flash('Ordren blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     execute_db('''
@@ -1873,7 +1893,7 @@ def job_verify_revision(job_id):
     ''', [current_user.id, job_id])
     
     log_audit('update', 'job', job_id, 'Verified drawing revision')
-    flash('Drawing revision verified.', 'success')
+    flash('Tegningsrevision bekræftet.', 'success')
     return redirect(url_for('job_detail', job_id=job_id))
 
 
@@ -1898,7 +1918,7 @@ def job_add_dimension(job_id):
     critical = 1 if request.form.get('critical') else 0
     
     if not name:
-        flash('Dimension name is required.', 'error')
+        flash('Dimensionsnavn skal udfyldes.', 'error')
         return redirect(url_for('job_detail', job_id=job_id))
     
     execute_db('''
@@ -1908,7 +1928,7 @@ def job_add_dimension(job_id):
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', [job_id, next_num, name, nominal, tol_plus, tol_minus, unit, ref, critical])
     
-    flash('Dimension added.', 'success')
+    flash('Dimension tilføjet.', 'success')
     return redirect(url_for('job_detail', job_id=job_id))
 
 
@@ -1917,7 +1937,7 @@ def job_add_dimension(job_id):
 def job_delete_dimension(job_id, dim_id):
     """Delete a dimension from a job."""
     execute_db('DELETE FROM job_dimensions WHERE id = ? AND job_id = ?', [dim_id, job_id])
-    flash('Dimension deleted.', 'success')
+    flash('Dimension slettet.', 'success')
     return redirect(url_for('job_detail', job_id=job_id))
 
 
@@ -1929,7 +1949,7 @@ def job_copy_dimensions(job_id, source_job_id):
     source_dims = query_db('SELECT * FROM job_dimensions WHERE job_id = ? ORDER BY dimension_number', [source_job_id])
     
     if not source_dims:
-        flash('Source job has no dimensions.', 'error')
+        flash('Kildeordren har ingen dimensioner.', 'error')
         return redirect(url_for('job_detail', job_id=job_id))
     
     # Delete existing dimensions
@@ -1946,7 +1966,7 @@ def job_copy_dimensions(job_id, source_job_id):
               dim['nominal_value'], dim['tolerance_plus'], dim['tolerance_minus'],
               dim['unit'], dim['drawing_reference'], dim['critical']])
     
-    flash(f'Copied {len(source_dims)} dimensions from source job.', 'success')
+    flash(f'{len(source_dims)} dimensioner kopieret fra kildeordren.', 'success')
     return redirect(url_for('job_detail', job_id=job_id))
 
 
@@ -1967,16 +1987,16 @@ def job_upload_document(job_id):
     """Upload a document to a job."""
     job = query_db('SELECT * FROM jobs WHERE id = ?', [job_id], one=True)
     if not job:
-        flash('Job not found.', 'error')
+        flash('Ordren blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     if 'file' not in request.files:
-        flash('No file selected.', 'error')
+        flash('Vælg en fil.', 'error')
         return redirect(url_for('job_detail', job_id=job_id))
     
     file = request.files['file']
     if file.filename == '':
-        flash('No file selected.', 'error')
+        flash('Vælg en fil.', 'error')
         return redirect(url_for('job_detail', job_id=job_id))
     
     if file and allowed_file(file.filename):
@@ -2000,9 +2020,9 @@ def job_upload_document(job_id):
         ''', [job_id, doc_type, file.filename, file_path, revision, current_user.id])
         
         log_audit('create', 'job', job_id, f'Uploaded document: {file.filename}')
-        flash('Document uploaded successfully.', 'success')
+        flash('Dokument uploadet.', 'success')
     else:
-        flash('Invalid file type.', 'error')
+        flash('Ugyldig filtype.', 'error')
     
     return redirect(url_for('job_detail', job_id=job_id))
 
@@ -2019,10 +2039,10 @@ def delete_document(doc_id):
             os.remove(full_path)
         
         execute_db('DELETE FROM job_documents WHERE id = ?', [doc_id])
-        flash('Document deleted.', 'success')
+        flash('Dokument slettet.', 'success')
         return redirect(url_for('job_detail', job_id=doc['job_id']))
     
-    flash('Document not found.', 'error')
+    flash('Dokument blev ikke fundet.', 'error')
     return redirect(url_for('jobs_list'))
 
 
@@ -2054,7 +2074,7 @@ def customer_add():
     notes = request.form.get('notes', '').strip()
     
     if not name:
-        flash('Customer name is required.', 'error')
+        flash('Kundenavn skal udfyldes.', 'error')
         return redirect(url_for('customers_list'))
     
     execute_db('''
@@ -2062,7 +2082,7 @@ def customer_add():
         VALUES (?, ?, ?, ?, ?)
     ''', [name, contact_person, email, phone, notes])
     
-    flash(f'Customer "{name}" added.', 'success')
+    flash(f'Kunde "{name}" tilføjet.', 'success')
     return redirect(url_for('customers_list'))
 
 
@@ -2077,7 +2097,7 @@ def customer_edit(customer_id):
     notes = request.form.get('notes', '').strip()
     
     if not name:
-        flash('Customer name is required.', 'error')
+        flash('Kundenavn skal udfyldes.', 'error')
         return redirect(url_for('customers_list'))
     
     execute_db('''
@@ -2085,7 +2105,7 @@ def customer_edit(customer_id):
         WHERE id = ?
     ''', [name, contact_person, email, phone, notes, customer_id])
     
-    flash('Customer updated.', 'success')
+    flash('Kunde opdateret.', 'success')
     return redirect(url_for('customers_list'))
 
 
@@ -2123,7 +2143,7 @@ def supplier_add():
     notes = request.form.get('notes', '').strip()
     
     if not name:
-        flash('Supplier name is required.', 'error')
+        flash('Leverandørnavn skal udfyldes.', 'error')
         return redirect(url_for('suppliers_list'))
     
     execute_db('''
@@ -2131,7 +2151,7 @@ def supplier_add():
         VALUES (?, ?, ?, ?, ?, ?, ?)
     ''', [name, supplier_type, contact_person, email, phone, processes_offered, notes])
     
-    flash(f'Supplier "{name}" added.', 'success')
+    flash(f'Leverandør "{name}" tilføjet.', 'success')
     return redirect(url_for('suppliers_list'))
 
 
@@ -2148,7 +2168,7 @@ def supplier_edit(supplier_id):
     notes = request.form.get('notes', '').strip()
     
     if not name:
-        flash('Supplier name is required.', 'error')
+        flash('Leverandørnavn skal udfyldes.', 'error')
         return redirect(url_for('suppliers_list'))
     
     execute_db('''
@@ -2157,7 +2177,7 @@ def supplier_edit(supplier_id):
         WHERE id = ?
     ''', [name, supplier_type, contact_person, email, phone, processes_offered, notes, supplier_id])
     
-    flash('Supplier updated.', 'success')
+    flash('Leverandør opdateret.', 'success')
     return redirect(url_for('suppliers_list'))
 
 
@@ -2166,7 +2186,7 @@ def supplier_edit(supplier_id):
 def supplier_delete(supplier_id):
     """Deactivate a supplier (soft delete)."""
     execute_db('UPDATE suppliers SET active = 0 WHERE id = ?', [supplier_id])
-    flash('Supplier deactivated.', 'success')
+    flash('Leverandør deaktiveret.', 'success')
     return redirect(url_for('suppliers_list'))
 
 
@@ -2180,7 +2200,7 @@ def material_control_create(job_id):
     """Create a new material control record for a job."""
     job = query_db('SELECT * FROM jobs WHERE id = ?', [job_id], one=True)
     if not job:
-        flash('Job not found.', 'error')
+        flash('Ordren blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     if request.method == 'POST':
@@ -2195,7 +2215,7 @@ def material_control_create(job_id):
         status = request.form.get('status', 'pending')
         
         if not material_type:
-            flash('Material type is required.', 'error')
+            flash('Materialetype skal udfyldes.', 'error')
             return redirect(url_for('material_control_create', job_id=job_id))
         
         mc_id = execute_db('''
@@ -2209,7 +2229,7 @@ def material_control_create(job_id):
         log_audit('create', 'material_control', mc_id, 
                  f'Created material control for job {job["internal_job_number"]}')
         
-        flash('Material control record created.', 'success')
+        flash('Materialekontrol oprettet.', 'success')
         return redirect(url_for('material_control_detail', mc_id=mc_id))
     
     # GET request
@@ -2233,7 +2253,7 @@ def material_control_detail(mc_id):
     ''', [mc_id], one=True)
     
     if not mc:
-        flash('Material control record not found.', 'error')
+        flash('Materialekontrol blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     # Get attachments (certificates)
@@ -2264,7 +2284,7 @@ def material_control_edit(mc_id):
     ''', [mc_id], one=True)
     
     if not mc:
-        flash('Material control record not found.', 'error')
+        flash('Materialekontrol blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     if request.method == 'POST':
@@ -2286,7 +2306,7 @@ def material_control_edit(mc_id):
         ''', [material_type, supplier_id, batch_number, quantity_received, certificate_matches,
               visual_ok, dimensions_ok, status, notes, mc_id])
         
-        flash('Material control record updated.', 'success')
+        flash('Materialekontrol opdateret.', 'success')
         return redirect(url_for('material_control_detail', mc_id=mc_id))
     
     job = query_db('SELECT * FROM jobs WHERE id = ?', [mc['job_id']], one=True)
@@ -2305,14 +2325,14 @@ def material_control_status(mc_id):
     """Update material control status (approve/reject)."""
     mc = query_db('SELECT * FROM material_controls WHERE id = ?', [mc_id], one=True)
     if not mc:
-        flash('Material control record not found.', 'error')
+        flash('Materialekontrol blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     new_status = request.form.get('status')
     if new_status in ['pending', 'approved', 'rejected']:
         execute_db('UPDATE material_controls SET status = ?, inspector_id = ? WHERE id = ?',
                   [new_status, current_user.id, mc_id])
-        flash(f'Material status updated to {new_status}.', 'success')
+        flash(f'Materialestatus opdateret til {new_status}.', 'success')
         
         # Notify QM + Admin when material is rejected
         if new_status == 'rejected':
@@ -2337,16 +2357,16 @@ def material_control_upload(mc_id):
     """Upload a material certificate."""
     mc = query_db('SELECT * FROM material_controls WHERE id = ?', [mc_id], one=True)
     if not mc:
-        flash('Material control record not found.', 'error')
+        flash('Materialekontrol blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     if 'file' not in request.files:
-        flash('No file selected.', 'error')
+        flash('Vælg en fil.', 'error')
         return redirect(url_for('material_control_detail', mc_id=mc_id))
     
     file = request.files['file']
     if file.filename == '':
-        flash('No file selected.', 'error')
+        flash('Vælg en fil.', 'error')
         return redirect(url_for('material_control_detail', mc_id=mc_id))
     
     if file and allowed_file(file.filename):
@@ -2366,9 +2386,9 @@ def material_control_upload(mc_id):
             VALUES (?, ?, ?, ?, ?, ?)
         ''', ['material_control', mc_id, file.filename, file_path, file_type, current_user.id])
         
-        flash('Material certificate uploaded.', 'success')
+        flash('Materialecertifikat uploadet.', 'success')
     else:
-        flash('Invalid file type.', 'error')
+        flash('Ugyldig filtype.', 'error')
     
     return redirect(url_for('material_control_detail', mc_id=mc_id))
 
@@ -2384,7 +2404,7 @@ def material_attachment_delete(mc_id, attachment_id):
         if os.path.exists(full_path):
             os.remove(full_path)
         execute_db('DELETE FROM attachments WHERE id = ?', [attachment_id])
-        flash('Attachment deleted.', 'success')
+        flash('Vedhæftning slettet.', 'success')
     
     return redirect(url_for('material_control_detail', mc_id=mc_id))
 
@@ -2399,7 +2419,7 @@ def supplier_error_history(supplier_id):
     """View all error reports for a supplier."""
     supplier = query_db('SELECT * FROM suppliers WHERE id = ?', [supplier_id], one=True)
     if not supplier:
-        flash('Supplier not found.', 'error')
+        flash('Leverandør blev ikke fundet.', 'error')
         return redirect(url_for('suppliers_list'))
     
     errors = query_db('''
@@ -2498,7 +2518,7 @@ def quality_by_part():
             part = query_db('SELECT * FROM parts WHERE part_number = ? AND part_revision = ?', 
                           [part['part_number'], part_revision], one=True)
             if not part:
-                flash('Part revision not found', 'error')
+                flash('Delrevision blev ikke fundet.', 'error')
                 return redirect(url_for('quality_by_part'))
         
         # Show errors for this specific part (using part_id)
@@ -2581,14 +2601,14 @@ def internal_error_report(job_id):
     ''', [job_id], one=True)
     
     if not job:
-        flash('Job not found.', 'error')
+        flash('Ordren blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     if request.method == 'POST':
         severity = request.form.get('severity', 'minor')
         description = request.form.get('description', '').strip()
         if not description:
-            flash('Description is required.', 'error')
+            flash('Beskrivelse skal udfyldes.', 'error')
             return render_template('internal_error_form.html', job=job)
         
         affected_quantity = request.form.get('affected_quantity', type=int)
@@ -2612,7 +2632,7 @@ def internal_error_report(job_id):
             )
         
         log_audit(current_user.id, 'error_report', error_id, 'created', f'Internal error for job {job["internal_job_number"]}')
-        flash('Internal quality report created. Admin and Quality Manager have been notified.', 'success')
+        flash('Intern kvalitetsrapport oprettet. Admin og kvalitetsansvarlig er notificeret.', 'success')
         return redirect(url_for('error_report_detail', error_id=error_id))
     
     return render_template('internal_error_form.html', job=job)
@@ -2631,7 +2651,7 @@ def material_error_report(mc_id):
     ''', [mc_id], one=True)
     
     if not mc:
-        flash('Material control record not found.', 'error')
+        flash('Materialekontrol blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     if request.method == 'POST':
@@ -2667,7 +2687,7 @@ def material_error_report(mc_id):
                       ['rejected', mc_id])
         
         log_audit(current_user.id, 'error_report', error_id, 'created', f'Material supplier error for MC#{mc_id}')
-        flash('Supplier error report created.', 'success')
+        flash('Leverandørfejlrapport oprettet.', 'success')
         return redirect(url_for('error_report_detail', error_id=error_id))
     
     return render_template('supplier_error_form.html', mc=mc, error_type='material')
@@ -2686,7 +2706,7 @@ def external_error_report(ep_id):
     ''', [ep_id], one=True)
     
     if not ep:
-        flash('External process record not found.', 'error')
+        flash('Ekstern proces blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     if request.method == 'POST':
@@ -2722,7 +2742,7 @@ def external_error_report(ep_id):
                       ['rejected', ep_id])
         
         log_audit(current_user.id, 'error_report', error_id, 'created', f'External supplier error for EP#{ep_id}')
-        flash('Supplier error report created.', 'success')
+        flash('Leverandørfejlrapport oprettet.', 'success')
         return redirect(url_for('error_report_detail', error_id=error_id))
     
     return render_template('supplier_error_form.html', ep=ep, error_type='external')
@@ -2746,7 +2766,7 @@ def error_report_detail(error_id):
     ''', [error_id], one=True)
     
     if not error:
-        flash('Error report not found.', 'error')
+        flash('Fejlrapport blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     # Get attachments
@@ -2765,7 +2785,7 @@ def error_report_update(error_id):
     """Update error report (disposition, root cause, corrective action, status)."""
     error = query_db('SELECT * FROM error_reports WHERE id = ?', [error_id], one=True)
     if not error:
-        flash('Error report not found.', 'error')
+        flash('Fejlrapport blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     action = request.form.get('action')
@@ -2786,28 +2806,28 @@ def error_report_update(error_id):
             request.form.get('assigned_to') or None,
             error_id
         ])
-        flash('Error report updated.', 'success')
+        flash('Fejlrapport opdateret.', 'success')
     
     elif action == 'resolve':
         execute_db('''
             UPDATE error_reports SET status = 'resolved', resolved_date = CURRENT_TIMESTAMP,
                    updated_at = CURRENT_TIMESTAMP WHERE id = ?
         ''', [error_id])
-        flash('Error report marked as resolved.', 'success')
+        flash('Fejlrapport markeret som løst.', 'success')
     
     elif action == 'close':
         execute_db('''
             UPDATE error_reports SET status = 'closed', closed_date = CURRENT_TIMESTAMP,
                    updated_at = CURRENT_TIMESTAMP WHERE id = ?
         ''', [error_id])
-        flash('Error report closed.', 'success')
+        flash('Fejlrapport lukket.', 'success')
     
     elif action == 'reopen':
         execute_db('''
             UPDATE error_reports SET status = 'open', resolved_date = NULL, closed_date = NULL,
                    updated_at = CURRENT_TIMESTAMP WHERE id = ?
         ''', [error_id])
-        flash('Error report reopened.', 'success')
+        flash('Fejlrapport genåbnet.', 'success')
     
     log_audit(current_user.id, 'error_report', error_id, action, f'Error report {action}')
     return redirect(url_for('error_report_detail', error_id=error_id))
@@ -2819,16 +2839,16 @@ def error_report_upload(error_id):
     """Upload attachment to error report (photos, documents)."""
     error = query_db('SELECT * FROM error_reports WHERE id = ?', [error_id], one=True)
     if not error:
-        flash('Error report not found.', 'error')
+        flash('Fejlrapport blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     if 'file' not in request.files:
-        flash('No file selected.', 'error')
+        flash('Vælg en fil.', 'error')
         return redirect(url_for('error_report_detail', error_id=error_id))
     
     file = request.files['file']
     if file.filename == '':
-        flash('No file selected.', 'error')
+        flash('Vælg en fil.', 'error')
         return redirect(url_for('error_report_detail', error_id=error_id))
     
     if file and allowed_file(file.filename):
@@ -2846,9 +2866,9 @@ def error_report_upload(error_id):
         ''', ['error_report', error_id, upload_path, file.filename, request.form.get('file_type', 'photo'),
               current_user.id])
         
-        flash('File uploaded successfully.', 'success')
+        flash('Fil uploadet.', 'success')
     else:
-        flash('Invalid file type.', 'error')
+        flash('Ugyldig filtype.', 'error')
     
     return redirect(url_for('error_report_detail', error_id=error_id))
 
@@ -2863,7 +2883,7 @@ def external_process_create(job_id):
     """Create a new external process record for a job."""
     job = query_db('SELECT * FROM jobs WHERE id = ?', [job_id], one=True)
     if not job:
-        flash('Job not found.', 'error')
+        flash('Ordren blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     suppliers = query_db("SELECT * FROM suppliers WHERE active = 1 AND (supplier_type = 'external' OR supplier_type = 'both') ORDER BY name")
@@ -2886,7 +2906,7 @@ def external_process_create(job_id):
         ])
         
         log_audit(current_user.id, 'external_process', ep_id, 'created', f'External process for job {job["job_number"]}')
-        flash('External process record created.', 'success')
+        flash('Ekstern proces oprettet.', 'success')
         return redirect(url_for('external_process_detail', ep_id=ep_id))
     
     return render_template('external_process.html', job=job, ep=None, suppliers=suppliers, edit_mode=False, view_mode=False)
@@ -2908,7 +2928,7 @@ def external_process_detail(ep_id):
     ''', [ep_id], one=True)
     
     if not ep:
-        flash('External process record not found.', 'error')
+        flash('Ekstern proces blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     job = query_db('SELECT * FROM jobs WHERE id = ?', [ep['job_id']], one=True)
@@ -2933,7 +2953,7 @@ def external_process_edit(ep_id):
     """Edit external process record."""
     ep = query_db('SELECT * FROM external_processes WHERE id = ?', [ep_id], one=True)
     if not ep:
-        flash('External process record not found.', 'error')
+        flash('Ekstern proces blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     job = query_db('SELECT * FROM jobs WHERE id = ?', [ep['job_id']], one=True)
@@ -2957,7 +2977,7 @@ def external_process_edit(ep_id):
         ])
         
         log_audit(current_user.id, 'external_process', ep_id, 'updated', 'External process updated')
-        flash('External process updated.', 'success')
+        flash('Ekstern proces opdateret.', 'success')
         return redirect(url_for('external_process_detail', ep_id=ep_id))
     
     return render_template('external_process.html', job=job, ep=ep, suppliers=suppliers, 
@@ -2970,7 +2990,7 @@ def external_process_receive(ep_id):
     """Record receipt of parts from external process."""
     ep = query_db('SELECT * FROM external_processes WHERE id = ?', [ep_id], one=True)
     if not ep:
-        flash('External process record not found.', 'error')
+        flash('Ekstern proces blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     execute_db('''
@@ -2982,7 +3002,7 @@ def external_process_receive(ep_id):
         WHERE id = ?
     ''', [request.form.get('quantity_received') or ep['quantity_sent'], ep_id])
     
-    flash('Parts received from external process.', 'success')
+    flash('Dele modtaget fra ekstern proces.', 'success')
     return redirect(url_for('external_process_detail', ep_id=ep_id))
 
 
@@ -2992,7 +3012,7 @@ def external_process_inspect(ep_id):
     """Record inspection of returned parts."""
     ep = query_db('SELECT * FROM external_processes WHERE id = ?', [ep_id], one=True)
     if not ep:
-        flash('External process record not found.', 'error')
+        flash('Ekstern proces blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     status = request.form.get('status')  # 'approved' or 'rejected'
@@ -3021,7 +3041,7 @@ def external_process_inspect(ep_id):
                     ep_id
                 )
     
-    flash(f'External process {status}.', 'success')
+    flash(f'Ekstern proces {status}.', 'success')
     return redirect(url_for('external_process_detail', ep_id=ep_id))
 
 
@@ -3031,16 +3051,16 @@ def external_process_upload(ep_id):
     """Upload attachment to external process (certificates, photos)."""
     ep = query_db('SELECT * FROM external_processes WHERE id = ?', [ep_id], one=True)
     if not ep:
-        flash('External process record not found.', 'error')
+        flash('Ekstern proces blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     if 'file' not in request.files:
-        flash('No file selected.', 'error')
+        flash('Vælg en fil.', 'error')
         return redirect(url_for('external_process_detail', ep_id=ep_id))
     
     file = request.files['file']
     if file.filename == '':
-        flash('No file selected.', 'error')
+        flash('Vælg en fil.', 'error')
         return redirect(url_for('external_process_detail', ep_id=ep_id))
     
     if file and allowed_file(file.filename):
@@ -3058,9 +3078,9 @@ def external_process_upload(ep_id):
             VALUES (?, ?, ?, ?, ?, ?)
         ''', ['external_process', ep_id, upload_path, file.filename, file_type, current_user.id])
         
-        flash('File uploaded successfully.', 'success')
+        flash('Fil uploadet.', 'success')
     else:
-        flash('Invalid file type.', 'error')
+        flash('Ugyldig filtype.', 'error')
     
     return redirect(url_for('external_process_detail', ep_id=ep_id))
 
@@ -3075,7 +3095,7 @@ def exit_control_create(job_id):
     """Create a new exit control inspection for a job."""
     job = query_db('SELECT * FROM jobs WHERE id = ?', [job_id], one=True)
     if not job:
-        flash('Job not found.', 'error')
+        flash('Ordren blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     if request.method == 'POST':
@@ -3097,7 +3117,7 @@ def exit_control_create(job_id):
         
         log_audit(current_user.id, 'exit_control', ec_id, 'created', 
                  f'Exit control for job {job["internal_job_number"]}, {len(samples)} samples')
-        flash(f'Exit control created with {len(samples)} samples to inspect.', 'success')
+        flash(f'Slutkontrol oprettet med {len(samples)} prøver at inspicere.', 'success')
         return redirect(url_for('exit_control_detail', ec_id=ec_id))
     
     # Calculate preview of samples
@@ -3121,7 +3141,7 @@ def exit_control_detail(ec_id):
     ''', [ec_id], one=True)
     
     if not ec:
-        flash('Exit control record not found.', 'error')
+        flash('Slutkontrol blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     job = query_db('SELECT * FROM jobs WHERE id = ?', [ec['job_id']], one=True)
@@ -3151,7 +3171,7 @@ def exit_control_record_sample(ec_id, sample_id):
     sample = query_db('SELECT * FROM exit_control_samples WHERE id = ? AND exit_control_id = ?',
                      [sample_id, ec_id], one=True)
     if not sample:
-        flash('Sample not found.', 'error')
+        flash('Prøve blev ikke fundet.', 'error')
         return redirect(url_for('exit_control_detail', ec_id=ec_id))
     
     dimensions_ok = 1 if request.form.get('dimensions_ok') else 0
@@ -3184,7 +3204,7 @@ def exit_control_record_sample(ec_id, sample_id):
                 WHERE id = ? AND workflow_stage = 'exit_control'
             ''', [ec['job_id']])
     
-    flash(f'Part #{sample["part_number"]} recorded as {"PASS" if overall_pass else "FAIL"}.', 
+    flash(f'Del #{sample["part_number"]} registreret som {"OK" if overall_pass else "FEJL"}.', 
           'success' if overall_pass else 'warning')
     return redirect(url_for('exit_control_detail', ec_id=ec_id))
 
@@ -3195,7 +3215,7 @@ def exit_control_complete(ec_id):
     """Mark exit control as complete and update job status."""
     ec = query_db('SELECT * FROM exit_controls WHERE id = ?', [ec_id], one=True)
     if not ec:
-        flash('Exit control record not found.', 'error')
+        flash('Slutkontrol blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     # Check all samples inspected
@@ -3203,7 +3223,7 @@ def exit_control_complete(ec_id):
     uninspected = [s for s in samples if s['overall_pass'] is None]
     
     if uninspected:
-        flash(f'{len(uninspected)} samples still need inspection.', 'error')
+        flash(f'{len(uninspected)} prøver mangler endnu inspektion.', 'error')
         return redirect(url_for('exit_control_detail', ec_id=ec_id))
     
     # Determine overall result
@@ -3217,9 +3237,9 @@ def exit_control_complete(ec_id):
             UPDATE jobs SET workflow_stage = 'complete', completed_at = CURRENT_TIMESTAMP 
             WHERE id = ?
         ''', [ec['job_id']])
-        flash('Exit control PASSED. Job marked as complete.', 'success')
+        flash('Slutkontrol bestået. Ordre markeret som færdig.', 'success')
     else:
-        flash('Exit control FAILED. Review failed samples and create error reports.', 'warning')
+        flash('Slutkontrol ikke bestået. Gennemgå fejlede prøver og opret fejlrapporter.', 'warning')
     
     log_audit(current_user.id, 'exit_control', ec_id, 'completed', f'Status: {status}')
     return redirect(url_for('exit_control_detail', ec_id=ec_id))
@@ -3231,12 +3251,12 @@ def exit_control_add_samples(ec_id):
     """Add additional sample parts to inspect."""
     ec = query_db('SELECT * FROM exit_controls WHERE id = ?', [ec_id], one=True)
     if not ec:
-        flash('Exit control record not found.', 'error')
+        flash('Slutkontrol blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     part_numbers = request.form.get('part_numbers', '').strip()
     if not part_numbers:
-        flash('No part numbers provided.', 'error')
+        flash('Ingen delenumre angivet.', 'error')
         return redirect(url_for('exit_control_detail', ec_id=ec_id))
     
     added = 0
@@ -3259,9 +3279,9 @@ def exit_control_add_samples(ec_id):
             continue
     
     if added:
-        flash(f'Added {added} additional sample(s).', 'success')
+        flash(f'{added} ekstra prøve(r) tilføjet.', 'success')
     else:
-        flash('No new samples added.', 'warning')
+        flash('Ingen nye prøver tilføjet.', 'warning')
     
     return redirect(url_for('exit_control_detail', ec_id=ec_id))
 
@@ -3276,14 +3296,14 @@ def measurement_report_create(job_id):
     """Create a new measurement report for a job."""
     job = query_db('SELECT * FROM jobs WHERE id = ?', [job_id], one=True)
     if not job:
-        flash('Job not found.', 'error')
+        flash('Ordren blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     # Get dimensions for this job
     dimensions = query_db('SELECT * FROM job_dimensions WHERE job_id = ? ORDER BY dimension_number', [job_id])
     
     if not dimensions:
-        flash('No dimensions defined for this job. Add dimensions before creating a measurement report.', 'error')
+        flash('Ingen dimensioner defineret for ordren. Tilføj dimensioner før du opretter en målerapport.', 'error')
         return redirect(url_for('job_detail', job_id=job_id))
     
     if request.method == 'POST':
@@ -3337,7 +3357,7 @@ def measurement_report_create(job_id):
         log_audit('create', 'measurement_report', report_id, 
                  f'Created {report_type} measurement report for job {job["internal_job_number"]}')
         
-        flash('Measurement report created successfully.', 'success')
+        flash('Målerapport oprettet.', 'success')
         return redirect(url_for('measurement_report_detail', report_id=report_id))
     
     # GET request - show form
@@ -3383,7 +3403,7 @@ def measurement_report_detail(report_id):
     ''', [report_id], one=True)
     
     if not report:
-        flash('Measurement report not found.', 'error')
+        flash('Målerapport blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     # Get dimensions with their measurements
@@ -3427,7 +3447,7 @@ def measurement_report_edit(report_id):
     ''', [report_id], one=True)
     
     if not report:
-        flash('Measurement report not found.', 'error')
+        flash('Målerapport blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     job = query_db('SELECT * FROM jobs WHERE id = ?', [report['job_id']], one=True)
@@ -3492,7 +3512,7 @@ def measurement_report_edit(report_id):
         execute_db('UPDATE measurement_reports SET overall_status = ? WHERE id = ?', 
                   [overall_status, report_id])
         
-        flash('Measurement report updated.', 'success')
+        flash('Målerapport opdateret.', 'success')
         return redirect(url_for('measurement_report_detail', report_id=report_id))
     
     # GET - get existing measurements
@@ -3516,16 +3536,16 @@ def measurement_report_upload(report_id):
     """Upload a scanned measurement sheet to a report."""
     report = query_db('SELECT * FROM measurement_reports WHERE id = ?', [report_id], one=True)
     if not report:
-        flash('Measurement report not found.', 'error')
+        flash('Målerapport blev ikke fundet.', 'error')
         return redirect(url_for('jobs_list'))
     
     if 'file' not in request.files:
-        flash('No file selected.', 'error')
+        flash('Vælg en fil.', 'error')
         return redirect(url_for('measurement_report_detail', report_id=report_id))
     
     file = request.files['file']
     if file.filename == '':
-        flash('No file selected.', 'error')
+        flash('Vælg en fil.', 'error')
         return redirect(url_for('measurement_report_detail', report_id=report_id))
     
     if file and allowed_file(file.filename):
@@ -3546,9 +3566,9 @@ def measurement_report_upload(report_id):
             VALUES (?, ?, ?, ?, ?, ?)
         ''', ['measurement_report', report_id, file.filename, file_path, file_type, current_user.id])
         
-        flash('Measurement sheet uploaded successfully.', 'success')
+        flash('Måleark uploadet.', 'success')
     else:
-        flash('Invalid file type. Allowed: images and PDF.', 'error')
+        flash('Ugyldig filtype. Tilladte: billeder og PDF.', 'error')
     
     return redirect(url_for('measurement_report_detail', report_id=report_id))
 
@@ -3564,7 +3584,7 @@ def measurement_attachment_delete(report_id, attachment_id):
         if os.path.exists(full_path):
             os.remove(full_path)
         execute_db('DELETE FROM attachments WHERE id = ?', [attachment_id])
-        flash('Attachment deleted.', 'success')
+        flash('Vedhæftning slettet.', 'success')
     
     return redirect(url_for('measurement_report_detail', report_id=report_id))
 

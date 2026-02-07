@@ -1,52 +1,52 @@
 {% extends "base.html" %}
 
-{% block title %}Suppliers - Millpoint QA{% endblock %}
+{% block title %}Suppliers - Millpoint QC - Ravnsgaard Metal A/S{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Suppliers</h1>
-    <a href="{{ url_for('all_supplier_errors') }}" class="btn btn-secondary">View All Quality Issues</a>
+    <h1>Leverandører</h1>
+    <a href="{{ url_for('all_supplier_errors') }}" class="btn btn-secondary">Se alle kvalitetsfejl</a>
 </div>
 
 <!-- Add Supplier Form -->
 <div class="card">
     <div class="card-header">
-        <h2>Add New Supplier</h2>
+        <h2>Tilføj ny leverandør</h2>
     </div>
     <div class="card-body">
         <form method="POST" action="{{ url_for('supplier_add') }}" class="supplier-form">
             <div class="form-grid">
                 <div class="form-group">
-                    <label for="name">Company Name *</label>
+                    <label for="name">Firmanavn *</label>
                     <input type="text" id="name" name="name" required>
                 </div>
                 <div class="form-group">
-                    <label for="supplier_type">Supplier Type *</label>
+                    <label for="supplier_type">Leverandørtype *</label>
                     <select id="supplier_type" name="supplier_type" required>
-                        <option value="material">Raw Material Supplier</option>
-                        <option value="external_process">External Process (Subcontractor)</option>
-                        <option value="both">Both</option>
+                        <option value="material">Råmaterialeleverandør</option>
+                        <option value="external_process">Ekstern proces (underleverandør)</option>
+                        <option value="both">Begge</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="contact_person">Contact Person</label>
+                    <label for="contact_person">Kontaktperson</label>
                     <input type="text" id="contact_person" name="contact_person">
                 </div>
                 <div class="form-group">
-                    <label for="email">Email</label>
+                    <label for="email">E-mail</label>
                     <input type="email" id="email" name="email">
                 </div>
                 <div class="form-group">
-                    <label for="phone">Phone</label>
+                    <label for="phone">Telefon</label>
                     <input type="text" id="phone" name="phone">
                 </div>
                 <div class="form-group">
-                    <label for="processes_offered">Processes Offered</label>
+                    <label for="processes_offered">Tilbødte processer</label>
                     <input type="text" id="processes_offered" name="processes_offered" 
-                           placeholder="e.g., anodize, paint, heat treatment">
+                           placeholder="f.eks. anodisering, maling, varmebehandling">
                 </div>
             </div>
-            <button type="submit" class="btn btn-primary">Add Supplier</button>
+            <button type="submit" class="btn btn-primary">Tilføj leverandør</button>
         </form>
     </div>
 </div>
@@ -54,21 +54,21 @@
 <!-- Supplier List -->
 <div class="card">
     <div class="card-header">
-        <h2>Suppliers</h2>
+        <h2>Leverandører</h2>
     </div>
     <div class="card-body">
         {% if suppliers %}
         <table class="table">
             <thead>
                 <tr>
-                    <th>Company Name</th>
+                    <th>Firmanavn</th>
                     <th>Type</th>
-                    <th>Contact</th>
-                    <th>Phone / Email</th>
-                    <th>Processes</th>
-                    <th>Usage</th>
-                    <th>Quality Issues</th>
-                    <th>Actions</th>
+                    <th>Kontakt</th>
+                    <th>Telefon / E-mail</th>
+                    <th>Processer</th>
+                    <th>Brug</th>
+                    <th>Kvalitetsfejl</th>
+                    <th>Handlinger</th>
                 </tr>
             </thead>
             <tbody>
@@ -77,11 +77,11 @@
                     <td><strong>{{ supplier.name }}</strong></td>
                     <td>
                         {% if supplier.supplier_type == 'material' %}
-                        <span class="badge badge-blue">Material</span>
+                        <span class="badge badge-blue">Materiale</span>
                         {% elif supplier.supplier_type == 'external_process' %}
-                        <span class="badge badge-purple">External Process</span>
+                        <span class="badge badge-purple">Ekstern proces</span>
                         {% else %}
-                        <span class="badge badge-cyan">Both</span>
+                        <span class="badge badge-cyan">Begge</span>
                         {% endif %}
                     </td>
                     <td>{{ supplier.contact_person or '-' }}</td>
@@ -94,36 +94,36 @@
                     <td>{{ supplier.processes_offered or '-' }}</td>
                     <td>
                         {% if supplier.material_count > 0 %}
-                        <span class="usage-badge">{{ supplier.material_count }} material</span>
+                        <span class="usage-badge">{{ supplier.material_count }} materiale</span>
                         {% endif %}
                         {% if supplier.process_count > 0 %}
-                        <span class="usage-badge">{{ supplier.process_count }} process</span>
+                        <span class="usage-badge">{{ supplier.process_count }} proces</span>
                         {% endif %}
                         {% if supplier.material_count == 0 and supplier.process_count == 0 %}
-                        <span class="text-muted">Not used</span>
+                        <span class="text-muted">Ikke brugt</span>
                         {% endif %}
                     </td>
                     <td>
                         {% if supplier.error_count > 0 %}
                         <a href="{{ url_for('supplier_error_history', supplier_id=supplier.id) }}" class="error-link">
                             <span class="badge badge-{{ 'red' if supplier.open_error_count > 0 else 'green' }}">
-                                {{ supplier.error_count }} total
+                                {{ supplier.error_count }} i alt
                             </span>
                             {% if supplier.open_error_count > 0 %}
-                            <span class="badge badge-yellow">{{ supplier.open_error_count }} open</span>
+                            <span class="badge badge-yellow">{{ supplier.open_error_count }} åbne</span>
                             {% endif %}
                         </a>
                         {% else %}
-                        <span class="text-muted">None</span>
+                        <span class="text-muted">Ingen</span>
                         {% endif %}
                     </td>
                     <td>
-                        <button class="btn btn-sm btn-secondary" onclick="editSupplier({{ supplier.id }}, '{{ supplier.name }}', '{{ supplier.supplier_type }}', '{{ supplier.contact_person or '' }}', '{{ supplier.email or '' }}', '{{ supplier.phone or '' }}', '{{ supplier.processes_offered or '' }}', '{{ supplier.notes or '' }}')">Edit</button>
-                        <a href="{{ url_for('supplier_error_history', supplier_id=supplier.id) }}" class="btn btn-sm btn-outline">History</a>
+                        <button class="btn btn-sm btn-secondary" onclick="editSupplier({{ supplier.id }}, '{{ supplier.name }}', '{{ supplier.supplier_type }}', '{{ supplier.contact_person or '' }}', '{{ supplier.email or '' }}', '{{ supplier.phone or '' }}', '{{ supplier.processes_offered or '' }}', '{{ supplier.notes or '' }}')">Rediger</button>
+                        <a href="{{ url_for('supplier_error_history', supplier_id=supplier.id) }}" class="btn btn-sm btn-outline">Historik</a>
                         {% if supplier.material_count == 0 and supplier.process_count == 0 and supplier.error_count == 0 %}
                         <form method="POST" action="{{ url_for('supplier_delete', supplier_id=supplier.id) }}" 
-                              style="display: inline;" onsubmit="return confirm('Delete this supplier?');">
-                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                              style="display: inline;" onsubmit="return confirm('Slet denne leverandør?');">
+                            <button type="submit" class="btn btn-sm btn-danger">Slet</button>
                         </form>
                         {% endif %}
                     </td>
@@ -132,7 +132,7 @@
             </tbody>
         </table>
         {% else %}
-        <p class="text-muted">No suppliers yet. Add your first supplier above.</p>
+        <p class="text-muted">Ingen leverandører endnu. Tilføj din første leverandør ovenfor.</p>
         {% endif %}
     </div>
 </div>
@@ -141,47 +141,47 @@
 <div id="editSupplierModal" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Edit Supplier</h3>
+            <h3>Rediger leverandør</h3>
             <button class="modal-close" onclick="hideEditSupplier()">&times;</button>
         </div>
         <form method="POST" id="editSupplierForm">
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="edit_name">Company Name *</label>
+                    <label for="edit_name">Firmanavn *</label>
                     <input type="text" id="edit_name" name="name" required>
                 </div>
                 <div class="form-group">
-                    <label for="edit_supplier_type">Supplier Type *</label>
+                    <label for="edit_supplier_type">Leverandørtype *</label>
                     <select id="edit_supplier_type" name="supplier_type" required>
-                        <option value="material">Raw Material Supplier</option>
-                        <option value="external_process">External Process (Subcontractor)</option>
-                        <option value="both">Both</option>
+                        <option value="material">Råmaterialeleverandør</option>
+                        <option value="external_process">Ekstern proces (underleverandør)</option>
+                        <option value="both">Begge</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="edit_contact_person">Contact Person</label>
+                    <label for="edit_contact_person">Kontaktperson</label>
                     <input type="text" id="edit_contact_person" name="contact_person">
                 </div>
                 <div class="form-group">
-                    <label for="edit_email">Email</label>
+                    <label for="edit_email">E-mail</label>
                     <input type="email" id="edit_email" name="email">
                 </div>
                 <div class="form-group">
-                    <label for="edit_phone">Phone</label>
+                    <label for="edit_phone">Telefon</label>
                     <input type="text" id="edit_phone" name="phone">
                 </div>
                 <div class="form-group">
-                    <label for="edit_processes_offered">Processes Offered</label>
+                    <label for="edit_processes_offered">Tilbødte processer</label>
                     <input type="text" id="edit_processes_offered" name="processes_offered">
                 </div>
                 <div class="form-group">
-                    <label for="edit_notes">Notes</label>
+                    <label for="edit_notes">Noter</label>
                     <textarea id="edit_notes" name="notes" rows="3"></textarea>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="hideEditSupplier()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-secondary" onclick="hideEditSupplier()">Annuller</button>
+                <button type="submit" class="btn btn-primary">Gem ændringer</button>
             </div>
         </form>
     </div>

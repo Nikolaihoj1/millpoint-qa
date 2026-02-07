@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Jobs - Millpoint QA{% endblock %}
+{% block title %}Jobs - Millpoint QC - Ravnsgaard Metal A/S{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Jobs</h1>
+    <h1>Ordre</h1>
     <div class="page-actions">
-        <a href="{{ url_for('job_create') }}" class="btn btn-primary">+ New Job</a>
+        <a href="{{ url_for('job_create') }}" class="btn btn-primary">+ Ny ordre</a>
     </div>
 </div>
 
@@ -16,14 +16,14 @@
         <form method="GET" class="filter-form">
             <div class="filter-row">
                 <div class="filter-group">
-                    <label for="search">Search</label>
+                    <label for="search">Søg</label>
                     <input type="text" id="search" name="search" value="{{ search }}" 
-                           placeholder="PO #, Part #, Job #...">
+                           placeholder="PO #, Del #, Ordre #...">
                 </div>
                 <div class="filter-group">
-                    <label for="stage">Stage</label>
+                    <label for="stage">Stadie</label>
                     <select id="stage" name="stage">
-                        <option value="">All Stages</option>
+                        <option value="">Alle stadier</option>
                         {% for stage_val, stage_name in workflow_stages %}
                         <option value="{{ stage_val }}" {% if current_stage == stage_val %}selected{% endif %}>
                             {{ stage_name }}
@@ -32,9 +32,9 @@
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label for="customer">Customer</label>
+                    <label for="customer">Kunde</label>
                     <select id="customer" name="customer">
-                        <option value="">All Customers</option>
+                        <option value="">Alle kunder</option>
                         {% for customer in customers %}
                         <option value="{{ customer.id }}" {% if current_customer|string == customer.id|string %}selected{% endif %}>
                             {{ customer.name }}
@@ -43,8 +43,8 @@
                     </select>
                 </div>
                 <div class="filter-group filter-actions">
-                    <button type="submit" class="btn btn-primary">Filter</button>
-                    <a href="{{ url_for('jobs_list') }}" class="btn btn-secondary">Clear</a>
+                    <button type="submit" class="btn btn-primary">Filtrer</button>
+                    <a href="{{ url_for('jobs_list') }}" class="btn btn-secondary">Ryd</a>
                 </div>
             </div>
         </form>
@@ -58,16 +58,16 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th>Job #</th>
+                    <th>Ordre #</th>
                     <th>PO #</th>
-                    <th>Customer</th>
-                    <th>Part Number</th>
-                    <th>Qty</th>
-                    <th>Due Date</th>
-                    <th>Stage</th>
-                    <th>Dims</th>
-                    <th>Errors</th>
-                    <th>Actions</th>
+                    <th>Kunde</th>
+                    <th>Delenummer</th>
+                    <th>Antal</th>
+                    <th>Forfaldsdato</th>
+                    <th>Stadie</th>
+                    <th>Dim.</th>
+                    <th>Fejl</th>
+                    <th>Handlinger</th>
                 </tr>
             </thead>
             <tbody>
@@ -90,7 +90,7 @@
                     </td>
                     <td>
                         <span class="badge badge-{{ workflow_stage_colors.get(job.workflow_stage, 'gray') }}">
-                            {{ job.workflow_stage | replace('_', ' ') | title }}
+                            {{ workflow_stage_labels_da.get(job.workflow_stage, job.workflow_stage) }}
                         </span>
                     </td>
                     <td>{{ job.dimension_count }}</td>
@@ -102,14 +102,14 @@
                         {% endif %}
                     </td>
                     <td>
-                        <a href="{{ url_for('job_detail', job_id=job.id) }}" class="btn btn-sm btn-secondary">View</a>
+                        <a href="{{ url_for('job_detail', job_id=job.id) }}" class="btn btn-sm btn-secondary">Vis</a>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         {% else %}
-        <p class="text-muted text-center">No jobs found. <a href="{{ url_for('job_create') }}">Create your first job</a></p>
+        <p class="text-muted text-center">Ingen ordre fundet. <a href="{{ url_for('job_create') }}">Opret din første ordre</a></p>
         {% endif %}
     </div>
 </div>

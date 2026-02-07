@@ -87,7 +87,7 @@
                     <td>{{ job.quantity }}</td>
                     <td>
                         <span class="badge badge-{{ workflow_stage_colors.get(job.workflow_stage, 'secondary') }}">
-                            {{ job.workflow_stage|replace('_', ' ')|title }}
+                            {{ workflow_stage_labels_da.get(job.workflow_stage, job.workflow_stage) }}
                         </span>
                     </td>
                     <td>

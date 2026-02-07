@@ -1,36 +1,36 @@
 {% extends "base.html" %}
 
-{% block title %}Customers - Millpoint QA{% endblock %}
+{% block title %}Customers - Millpoint QC - Ravnsgaard Metal A/S{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Customers</h1>
+    <h1>Kunder</h1>
 </div>
 
 <!-- Add Customer Form -->
 <div class="card">
     <div class="card-header">
-        <h2>Add New Customer</h2>
+        <h2>Tilføj ny kunde</h2>
     </div>
     <div class="card-body">
         <form method="POST" action="{{ url_for('customer_add') }}" class="form-inline">
             <div class="form-group">
-                <label for="name">Company Name *</label>
+                <label for="name">Firmanavn *</label>
                 <input type="text" id="name" name="name" required>
             </div>
             <div class="form-group">
-                <label for="contact_person">Contact Person</label>
+                <label for="contact_person">Kontaktperson</label>
                 <input type="text" id="contact_person" name="contact_person">
             </div>
             <div class="form-group">
-                <label for="email">Email</label>
+                <label for="email">E-mail</label>
                 <input type="email" id="email" name="email">
             </div>
             <div class="form-group">
-                <label for="phone">Phone</label>
+                <label for="phone">Telefon</label>
                 <input type="text" id="phone" name="phone">
             </div>
-            <button type="submit" class="btn btn-primary">Add Customer</button>
+            <button type="submit" class="btn btn-primary">Tilføj kunde</button>
         </form>
     </div>
 </div>
@@ -38,19 +38,19 @@
 <!-- Customer List -->
 <div class="card">
     <div class="card-header">
-        <h2>Customers</h2>
+        <h2>Kunder</h2>
     </div>
     <div class="card-body">
         {% if customers %}
         <table class="table">
             <thead>
                 <tr>
-                    <th>Company Name</th>
-                    <th>Contact Person</th>
-                    <th>Email</th>
-                    <th>Phone</th>
-                    <th>Jobs</th>
-                    <th>Actions</th>
+                    <th>Firmanavn</th>
+                    <th>Kontaktperson</th>
+                    <th>E-mail</th>
+                    <th>Telefon</th>
+                    <th>Ordre</th>
+                    <th>Handlinger</th>
                 </tr>
             </thead>
             <tbody>
@@ -62,20 +62,20 @@
                     <td>{{ customer.phone or '-' }}</td>
                     <td>
                         {% if customer.job_count > 0 %}
-                        <a href="{{ url_for('jobs_list', customer=customer.id) }}">{{ customer.job_count }} jobs</a>
+                        <a href="{{ url_for('jobs_list', customer=customer.id) }}">{{ customer.job_count }} ordre</a>
                         {% else %}
                         <span class="text-muted">0</span>
                         {% endif %}
                     </td>
                     <td>
-                        <button class="btn btn-sm btn-secondary" onclick="editCustomer({{ customer.id }}, '{{ customer.name }}', '{{ customer.contact_person or '' }}', '{{ customer.email or '' }}', '{{ customer.phone or '' }}', '{{ customer.notes or '' }}')">Edit</button>
+                        <button class="btn btn-sm btn-secondary" onclick="editCustomer({{ customer.id }}, '{{ customer.name }}', '{{ customer.contact_person or '' }}', '{{ customer.email or '' }}', '{{ customer.phone or '' }}', '{{ customer.notes or '' }}')">Rediger</button>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         {% else %}
-        <p class="text-muted">No customers yet. Add your first customer above.</p>
+        <p class="text-muted">Ingen kunder endnu. Tilføj din første kunde ovenfor.</p>
         {% endif %}
     </div>
 </div>
@@ -84,35 +84,35 @@
 <div id="editCustomerModal" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Edit Customer</h3>
+            <h3>Rediger kunde</h3>
             <button class="modal-close" onclick="hideEditCustomer()">&times;</button>
         </div>
         <form method="POST" id="editCustomerForm">
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="edit_name">Company Name *</label>
+                    <label for="edit_name">Firmanavn *</label>
                     <input type="text" id="edit_name" name="name" required>
                 </div>
                 <div class="form-group">
-                    <label for="edit_contact_person">Contact Person</label>
+                    <label for="edit_contact_person">Kontaktperson</label>
                     <input type="text" id="edit_contact_person" name="contact_person">
                 </div>
                 <div class="form-group">
-                    <label for="edit_email">Email</label>
+                    <label for="edit_email">E-mail</label>
                     <input type="email" id="edit_email" name="email">
                 </div>
                 <div class="form-group">
-                    <label for="edit_phone">Phone</label>
+                    <label for="edit_phone">Telefon</label>
                     <input type="text" id="edit_phone" name="phone">
                 </div>
                 <div class="form-group">
-                    <label for="edit_notes">Notes</label>
+                    <label for="edit_notes">Noter</label>
                     <textarea id="edit_notes" name="notes" rows="3"></textarea>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="hideEditCustomer()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-secondary" onclick="hideEditCustomer()">Annuller</button>
+                <button type="submit" class="btn btn-primary">Gem ændringer</button>
             </div>
         </form>
     </div>

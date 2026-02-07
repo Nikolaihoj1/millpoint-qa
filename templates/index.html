@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Millpoint QA{% endblock %}
+{% block title %}Oversigt - Millpoint QC - Ravnsgaard Metal A/S{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Dashboard</h1>
+    <h1>Oversigt</h1>
     <div class="page-actions">
-        <a href="{{ url_for('job_create') }}" class="btn btn-primary">+ New Job</a>
+        <a href="{{ url_for('job_create') }}" class="btn btn-primary">+ Ny ordre</a>
     </div>
 </div>
 
@@ -14,40 +14,40 @@
 <div class="metrics-row">
     <div class="metric-card">
         <div class="metric-value">{{ stats.active_jobs }}</div>
-        <div class="metric-label">Active Jobs</div>
+        <div class="metric-label">Aktive ordre</div>
     </div>
     <div class="metric-card {% if stats.overdue_count > 0 %}metric-warning{% endif %}">
         <div class="metric-value">{{ stats.overdue_count }}</div>
-        <div class="metric-label">Overdue</div>
+        <div class="metric-label">Forfaldne</div>
     </div>
     <div class="metric-card {% if stats.open_errors > 0 %}metric-danger{% endif %}">
         <div class="metric-value">{{ stats.open_errors }}</div>
-        <div class="metric-label">Open Errors</div>
+        <div class="metric-label">Åbne fejl</div>
     </div>
     <div class="metric-card">
         <div class="metric-value">{{ stats.pending_material }}</div>
-        <div class="metric-label">Pending Material</div>
+        <div class="metric-label">Afventer materiale</div>
     </div>
     <div class="metric-card">
         <div class="metric-value">{{ stats.pending_external }}</div>
-        <div class="metric-label">At External</div>
+        <div class="metric-label">Hos ekstern</div>
     </div>
     <div class="metric-card metric-success">
         <div class="metric-value">{{ stats.completed_jobs }}</div>
-        <div class="metric-label">Completed</div>
+        <div class="metric-label">Færdige</div>
     </div>
 </div>
 
 <!-- Workflow Pipeline -->
 <div class="card mb-4">
     <div class="card-header">
-        <h2>Workflow Pipeline</h2>
+        <h2>Arbejdsgang</h2>
     </div>
     <div class="card-body">
         <div class="pipeline">
             <div class="pipeline-stage">
                 <div class="stage-count">{{ stage_counts.po_receipt }}</div>
-                <div class="stage-name">PO Receipt</div>
+                <div class="stage-name">Ordremodtagelse</div>
             </div>
             <div class="pipeline-arrow">→</div>
             <div class="pipeline-stage">
@@ -57,27 +57,27 @@
             <div class="pipeline-arrow">→</div>
             <div class="pipeline-stage">
                 <div class="stage-count">{{ stage_counts.material_control }}</div>
-                <div class="stage-name">Material</div>
+                <div class="stage-name">Materiale</div>
             </div>
             <div class="pipeline-arrow">→</div>
             <div class="pipeline-stage stage-highlight">
                 <div class="stage-count">{{ stage_counts.in_process }}</div>
-                <div class="stage-name">In-Process</div>
+                <div class="stage-name">I produktion</div>
             </div>
             <div class="pipeline-arrow">→</div>
             <div class="pipeline-stage">
                 <div class="stage-count">{{ stage_counts.external_process }}</div>
-                <div class="stage-name">External</div>
+                <div class="stage-name">Ekstern</div>
             </div>
             <div class="pipeline-arrow">→</div>
             <div class="pipeline-stage">
                 <div class="stage-count">{{ stage_counts.exit_control }}</div>
-                <div class="stage-name">Exit Control</div>
+                <div class="stage-name">Slutkontrol</div>
             </div>
             <div class="pipeline-arrow">→</div>
             <div class="pipeline-stage stage-complete">
                 <div class="stage-count">{{ stage_counts.complete }}</div>
-                <div class="stage-name">Complete</div>
+                <div class="stage-name">Færdig</div>
             </div>
         </div>
     </div>
@@ -87,25 +87,25 @@
     <!-- Quality Stats (30 days) -->
     <div class="card">
         <div class="card-header">
-            <h2>Quality (Last 30 Days)</h2>
+            <h2>Kvalitet (sidste 30 dage)</h2>
         </div>
         <div class="card-body">
             <div class="quality-stats">
                 <div class="quality-item">
                     <span class="quality-value">{{ quality_stats.completed_30d or 0 }}</span>
-                    <span class="quality-label">Jobs Completed</span>
+                    <span class="quality-label">Ordre færdige</span>
                 </div>
                 <div class="quality-item">
                     <span class="quality-value {% if quality_stats.errors_30d > 0 %}text-warning{% endif %}">{{ quality_stats.errors_30d or 0 }}</span>
-                    <span class="quality-label">Error Reports</span>
+                    <span class="quality-label">Fejlrapporter</span>
                 </div>
                 <div class="quality-item">
                     <span class="quality-value">{{ quality_stats.exit_passed_30d or 0 }}</span>
-                    <span class="quality-label">Exit Passed</span>
+                    <span class="quality-label">Slutkontrol godkendt</span>
                 </div>
                 <div class="quality-item">
                     <span class="quality-value {% if quality_stats.exit_failed_30d > 0 %}text-danger{% endif %}">{{ quality_stats.exit_failed_30d or 0 }}</span>
-                    <span class="quality-label">Exit Failed</span>
+                    <span class="quality-label">Slutkontrol afvist</span>
                 </div>
             </div>
             
@@ -114,7 +114,7 @@
                 {% set total_exit = (quality_stats.exit_passed_30d or 0) + (quality_stats.exit_failed_30d or 0) %}
                 {% set pass_pct = ((quality_stats.exit_passed_30d or 0) / total_exit * 100) if total_exit > 0 else 0 %}
                 <div class="pass-rate-fill" style="width: {{ pass_pct }}%"></div>
-                <span class="pass-rate-label">{{ pass_pct|round(1) }}% Pass Rate</span>
+                <span class="pass-rate-label">{{ pass_pct|round(1) }}% bestået</span>
             </div>
             {% endif %}
         </div>
@@ -123,8 +123,8 @@
     <!-- Supplier Issues -->
     <div class="card">
         <div class="card-header">
-            <h2>Supplier Issues (90 Days)</h2>
-            <a href="{{ url_for('all_supplier_errors') }}" class="btn btn-sm btn-secondary">View All</a>
+            <h2>Leverandørfejl (90 dage)</h2>
+            <a href="{{ url_for('all_supplier_errors') }}" class="btn btn-sm btn-secondary">Se alle</a>
         </div>
         <div class="card-body">
             {% if problem_suppliers %}
@@ -138,16 +138,16 @@
                         </span>
                     </div>
                     <div class="supplier-counts">
-                        <span class="total-count">{{ supplier.error_count }} total</span>
+                        <span class="total-count">{{ supplier.error_count }} i alt</span>
                         {% if supplier.open_count > 0 %}
-                        <span class="open-count">{{ supplier.open_count }} open</span>
+                        <span class="open-count">{{ supplier.open_count }} åbne</span>
                         {% endif %}
                     </div>
                 </div>
                 {% endfor %}
             </div>
             {% else %}
-            <p class="text-muted text-center">No supplier issues recorded</p>
+            <p class="text-muted text-center">Ingen leverandørfejl registreret</p>
             {% endif %}
         </div>
     </div>
@@ -155,7 +155,7 @@
     <!-- Error Breakdown -->
     <div class="card">
         <div class="card-header">
-            <h2>Errors by Type (90 Days)</h2>
+            <h2>Fejl efter type (90 dage)</h2>
         </div>
         <div class="card-body">
             <canvas id="errorChart" height="180"></canvas>
@@ -167,17 +167,17 @@
     <!-- Overdue Jobs -->
     <div class="card">
         <div class="card-header">
-            <h2>Overdue Jobs</h2>
+            <h2>Forfaldne ordre</h2>
         </div>
         <div class="card-body">
             {% if overdue_jobs %}
             <table class="table table-compact">
                 <thead>
                     <tr>
-                        <th>Job</th>
-                        <th>Part</th>
-                        <th>Due</th>
-                        <th>Stage</th>
+                        <th>Ordre</th>
+                        <th>Del</th>
+                        <th>Forfalden</th>
+                        <th>Stadie</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -186,13 +186,13 @@
                         <td><a href="{{ url_for('job_detail', job_id=job.id) }}">{{ job.internal_job_number }}</a></td>
                         <td>{{ job.part_number }}</td>
                         <td class="text-danger">{{ job.due_date }}</td>
-                        <td><span class="badge badge-{{ workflow_stage_colors.get(job.workflow_stage, 'gray') }} badge-sm">{{ job.workflow_stage | replace('_', ' ') | title }}</span></td>
+                        <td><span class="badge badge-{{ workflow_stage_colors.get(job.workflow_stage, 'gray') }} badge-sm">{{ workflow_stage_labels_da.get(job.workflow_stage, job.workflow_stage) }}</span></td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
             {% else %}
-            <p class="text-muted text-center">No overdue jobs</p>
+            <p class="text-muted text-center">Ingen forfaldne ordre</p>
             {% endif %}
         </div>
     </div>
@@ -200,24 +200,24 @@
     <!-- Open Errors -->
     <div class="card">
         <div class="card-header">
-            <h2>Open Error Reports</h2>
-            <a href="{{ url_for('all_supplier_errors', status='open') }}" class="btn btn-sm btn-secondary">View All</a>
+            <h2>Åbne fejlrapporter</h2>
+            <a href="{{ url_for('all_supplier_errors', status='open') }}" class="btn btn-sm btn-secondary">Se alle</a>
         </div>
         <div class="card-body">
             {% if open_errors %}
             <table class="table table-compact">
                 <thead>
                     <tr>
-                        <th>Part</th>
-                        <th>Supplier</th>
-                        <th>Severity</th>
+                        <th>Del</th>
+                        <th>Leverandør</th>
+                        <th>Alvorlighed</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for error in open_errors %}
                     <tr>
                         <td><a href="{{ url_for('error_report_detail', error_id=error.id) }}">{{ error.part_number }}</a></td>
-                        <td>{{ error.supplier_name or 'Internal' }}</td>
+                        <td>{{ error.supplier_name or 'Intern' }}</td>
                         <td>
                             <span class="badge badge-{% if error.severity == 'critical' %}red{% elif error.severity == 'major' %}orange{% else %}yellow{% endif %} badge-sm">
                                 {{ error.severity | title }}
@@ -228,7 +228,7 @@
                 </tbody>
             </table>
             {% else %}
-            <p class="text-muted text-center">No open errors</p>
+            <p class="text-muted text-center">Ingen åbne fejl</p>
             {% endif %}
         </div>
     </div>
@@ -238,8 +238,8 @@
 {% if equipment_alerts %}
 <div class="card mb-4 alert-card">
     <div class="card-header">
-        <h2>Equipment Calibration Alerts</h2>
-        <a href="{{ url_for('equipment_list') }}" class="btn btn-sm btn-secondary">View All</a>
+        <h2>Udstyrskalibrering</h2>
+        <a href="{{ url_for('equipment_list') }}" class="btn btn-sm btn-secondary">Se alle</a>
     </div>
     <div class="card-body">
         <div class="equipment-alerts">
@@ -251,9 +251,9 @@
                 </div>
                 <div class="alert-status">
                     {% if eq.status == 'overdue' %}
-                    <span class="badge badge-red">Overdue</span>
+                    <span class="badge badge-red">Forfalden</span>
                     {% else %}
-                    <span class="badge badge-yellow">Due {{ eq.calibration_due_date }}</span>
+                    <span class="badge badge-yellow">Forfalder {{ eq.calibration_due_date }}</span>
                     {% endif %}
                 </div>
             </div>
@@ -266,21 +266,21 @@
 <!-- Recent Jobs -->
 <div class="card">
     <div class="card-header">
-        <h2>Recent Jobs</h2>
-        <a href="{{ url_for('jobs_list') }}" class="btn btn-sm btn-secondary">View All</a>
+        <h2>Seneste ordre</h2>
+        <a href="{{ url_for('jobs_list') }}" class="btn btn-sm btn-secondary">Se alle</a>
     </div>
     <div class="card-body">
         {% if recent_jobs %}
         <table class="table">
             <thead>
                 <tr>
-                    <th>Job #</th>
+                    <th>Ordre #</th>
                     <th>PO #</th>
-                    <th>Part Number</th>
-                    <th>Customer</th>
-                    <th>Qty</th>
-                    <th>Due Date</th>
-                    <th>Stage</th>
+                    <th>Delenummer</th>
+                    <th>Kunde</th>
+                    <th>Antal</th>
+                    <th>Forfaldsdato</th>
+                    <th>Stadie</th>
                 </tr>
             </thead>
             <tbody>
@@ -299,7 +299,7 @@
                     </td>
                     <td>
                         <span class="badge badge-{{ workflow_stage_colors.get(job.workflow_stage, 'gray') }}">
-                            {{ job.workflow_stage | replace('_', ' ') | title }}
+                            {{ workflow_stage_labels_da.get(job.workflow_stage, job.workflow_stage) }}
                         </span>
                     </td>
                 </tr>
@@ -307,7 +307,7 @@
             </tbody>
         </table>
         {% else %}
-        <p class="text-muted">No jobs yet. <a href="{{ url_for('job_create') }}">Create your first job</a></p>
+        <p class="text-muted">Ingen ordre endnu. <a href="{{ url_for('job_create') }}">Opret din første ordre</a></p>
         {% endif %}
     </div>
 </div>
@@ -542,9 +542,10 @@
 <script>
 // Error by Type Chart
 const errorData = {{ errors_by_type | tojson }};
+const typeLabels = {{ error_type_labels_da | tojson }};
 const labels = errorData.map(e => {
     const type = e.error_type || 'internal';
-    return type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return typeLabels[type] || type;
 });
 const counts = errorData.map(e => e.count);
 
@@ -576,7 +577,7 @@ if (ctx && errorData.length > 0) {
         }
     });
 } else if (ctx) {
-    ctx.parentElement.innerHTML = '<p class="text-muted text-center" style="padding: 2rem;">No error data</p>';
+    ctx.parentElement.innerHTML = '<p class="text-muted text-center" style="padding: 2rem;">Ingen fejldata</p>';
 }
 </script>
 {% endblock %}

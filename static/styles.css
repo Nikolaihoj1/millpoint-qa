@@ -704,11 +704,41 @@ a:hover {
 }
 
 /* =============================================================================
+   Footer (Millpoint / RFQ-tracker style)
+   ============================================================================= */
+
+.app-footer {
+    margin-top: 2rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.app-footer .footer-copy {
+    margin-bottom: 0.5rem;
+}
+
+.app-footer .footer-prompt {
+    font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
+    font-size: 0.8rem;
+}
+
+.app-footer .prompt {
+    color: var(--text-secondary);
+}
+
+.app-footer .prompt-cmd {
+    color: var(--text-muted);
+}
+
+/* =============================================================================
    Print Styles
    ============================================================================= */
 
 @media print {
     .navbar,
+    .app-footer,
     .page-actions,
     .btn,
     .theme-toggle {

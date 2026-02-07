@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="da" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Millpoint QA{% endblock %}</title>
+    <title>{% block title %}Millpoint QC - Ravnsgaard Metal A/S{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
@@ -11,34 +11,34 @@
     {% if current_user.is_authenticated %}
     <nav class="navbar">
         <div class="nav-brand">
-            <a href="{{ url_for('index') }}">Millpoint QA</a>
+            <a href="{{ url_for('index') }}">Millpoint QC - Ravnsgaard Metal A/S</a>
         </div>
         <div class="nav-menu">
-            <a href="{{ url_for('index') }}" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">Dashboard</a>
-            <a href="{{ url_for('jobs_list') }}" class="nav-link {% if 'job' in request.endpoint and 'material' not in request.endpoint %}active{% endif %}">Jobs</a>
-            <a href="{{ url_for('customers_list') }}" class="nav-link {% if 'customer' in request.endpoint %}active{% endif %}">Customers</a>
-            <a href="{{ url_for('suppliers_list') }}" class="nav-link {% if 'supplier' in request.endpoint and 'error' not in request.endpoint %}active{% endif %}">Suppliers</a>
-            <a href="{{ url_for('all_supplier_errors') }}" class="nav-link {% if 'error' in request.endpoint and 'part' not in request.endpoint and 'report' not in request.endpoint %}active{% endif %}">Quality Issues</a>
-            <a href="{{ url_for('quality_by_part') }}" class="nav-link {% if 'part' in request.endpoint and 'parts' not in request.endpoint %}active{% endif %}">Part History</a>
-            <a href="{{ url_for('parts_list') }}" class="nav-link {% if 'parts' in request.endpoint %}active{% endif %}">Parts</a>
-            <a href="{{ url_for('reports') }}" class="nav-link {% if 'report' in request.endpoint %}active{% endif %}">Reports</a>
-            <a href="{{ url_for('equipment_list') }}" class="nav-link {% if 'equipment' in request.endpoint %}active{% endif %}">Equipment</a>
+            <a href="{{ url_for('index') }}" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">Oversigt</a>
+            <a href="{{ url_for('jobs_list') }}" class="nav-link {% if 'job' in request.endpoint and 'material' not in request.endpoint %}active{% endif %}">Ordre</a>
+            <a href="{{ url_for('customers_list') }}" class="nav-link {% if 'customer' in request.endpoint %}active{% endif %}">Kunder</a>
+            <a href="{{ url_for('suppliers_list') }}" class="nav-link {% if 'supplier' in request.endpoint and 'error' not in request.endpoint %}active{% endif %}">Leverandører</a>
+            <a href="{{ url_for('all_supplier_errors') }}" class="nav-link {% if 'error' in request.endpoint and 'part' not in request.endpoint and 'report' not in request.endpoint %}active{% endif %}">Kvalitetsfejl</a>
+            <a href="{{ url_for('quality_by_part') }}" class="nav-link {% if 'part' in request.endpoint and 'parts' not in request.endpoint %}active{% endif %}">Delehistorik</a>
+            <a href="{{ url_for('parts_list') }}" class="nav-link {% if 'parts' in request.endpoint %}active{% endif %}">Dele</a>
+            <a href="{{ url_for('reports') }}" class="nav-link {% if 'report' in request.endpoint %}active{% endif %}">Rapporter</a>
+            <a href="{{ url_for('equipment_list') }}" class="nav-link {% if 'equipment' in request.endpoint %}active{% endif %}">Udstyr</a>
             {% if current_user.role in ['admin', 'quality_manager'] %}
-            <a href="{{ url_for('admin_users') }}" class="nav-link {% if 'admin' in request.endpoint %}active{% endif %}">Admin</a>
+            <a href="{{ url_for('admin_users') }}" class="nav-link {% if 'admin' in request.endpoint %}active{% endif %}">Administration</a>
             {% endif %}
         </div>
         <div class="nav-right">
             <div class="notification-bell-container">
-                <a href="{{ url_for('notifications_list') }}" class="notification-bell" title="Notifications">
+                <a href="{{ url_for('notifications_list') }}" class="notification-bell" title="Notifikationer">
                     <span class="bell-icon">🔔</span>
                     <span id="notification-badge" class="notification-badge" style="display: none;">0</span>
                 </a>
             </div>
             <span class="user-info">{{ current_user.username }} ({{ current_user.role }})</span>
-            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+            <button class="theme-toggle" onclick="toggleTheme()" title="Skift tema">
                 <span class="theme-icon">🌓</span>
             </button>
-            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-secondary">Logout</a>
+            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-secondary">Log ud</a>
         </div>
     </nav>
     {% endif %}
@@ -59,6 +59,13 @@
 
         {% block content %}{% endblock %}
     </main>
+
+    {% if current_user.is_authenticated %}
+    <footer class="app-footer">
+        <div class="footer-copy">&copy; {{ now.year }} Millpoint QC — Ravnsgaard Metal A/S</div>
+        <div class="footer-prompt"><span class="prompt">ravnsgaard@millpoint.dk:~$</span> <span class="prompt-cmd">exit</span></div>
+    </footer>
+    {% endif %}
 
     <script>
         // Theme toggle

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ part.part_number }}{% if part.part_revision %} Rev {{ part.part_revision }}{% endif %} - Millpoint QA{% endblock %}
+{% block title %}{{ part.part_number }}{% if part.part_revision %} Rev {{ part.part_revision }}{% endif %} - Millpoint QC - Ravnsgaard Metal A/S{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -77,7 +77,7 @@
                         <td>{{ job.quantity }}</td>
                         <td>
                             <span class="badge badge-{{ workflow_stage_colors.get(job.workflow_stage, 'gray') }}">
-                                {{ job.workflow_stage | replace('_', ' ') | title }}
+                                {{ workflow_stage_labels_da.get(job.workflow_stage, job.workflow_stage) }}
                             </span>
                         </td>
                         <td>{{ job.created_at[:10] if job.created_at else '-' }}</td>

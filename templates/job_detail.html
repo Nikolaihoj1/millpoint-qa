@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}{{ job.internal_job_number }} - Millpoint QA{% endblock %}
+{% block title %}{{ job.internal_job_number }} - Millpoint QC - Ravnsgaard Metal A/S{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div class="page-title">
         <h1>{{ job.internal_job_number }}</h1>
         <span class="badge badge-{{ workflow_stage_colors.get(job.workflow_stage, 'gray') }} badge-lg">
-            {{ job.workflow_stage | replace('_', ' ') | title }}
+            {{ workflow_stage_labels_da.get(job.workflow_stage, job.workflow_stage) }}
         </span>
     </div>
     <div class="page-actions">
@@ -102,7 +102,7 @@
                             {{ stage_name }}
                         </option>
                         {% endfor %}
-                        <option value="on_hold" {% if job.workflow_stage == 'on_hold' %}selected{% endif %}>On Hold</option>
+                        <option value="on_hold" {% if job.workflow_stage == 'on_hold' %}selected{% endif %}>På hold</option>
                     </select>
                     <button type="submit" class="btn btn-primary">Update Stage</button>
                 </form>
@@ -547,7 +547,7 @@
                     {% for er in error_reports %}
                     <tr>
                         <td><strong>NCR-{{ er.id }}</strong></td>
-                        <td>{{ er.workflow_stage | replace('_', ' ') | title }}</td>
+                        <td>{{ workflow_stage_labels_da.get(er.workflow_stage, er.workflow_stage) }}</td>
                         <td>
                             <span class="badge badge-{% if er.severity == 'critical' %}red{% elif er.severity == 'major' %}orange{% else %}yellow{% endif %}">
                                 {{ er.severity | title }}

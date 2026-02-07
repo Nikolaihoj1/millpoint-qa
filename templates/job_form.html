@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}{% if edit_mode %}Edit Job{% else %}New Job{% endif %} - Millpoint QA{% endblock %}
+{% block title %}{% if edit_mode %}Rediger ordre{% else %}Ny ordre{% endif %} - Millpoint QC - Ravnsgaard Metal A/S{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>{% if edit_mode %}Edit Job: {{ job.internal_job_number }}{% else %}Create New Job{% endif %}</h1>
+    <h1>{% if edit_mode %}Rediger ordre: {{ job.internal_job_number }}{% else %}Opret ny ordre{% endif %}</h1>
 </div>
 
 <form method="POST" class="job-form">
@@ -12,19 +12,19 @@
         <!-- Left Column: Job Details -->
         <div class="card">
             <div class="card-header">
-                <h2>Job Details</h2>
+                <h2>Ordredetaljer</h2>
             </div>
             <div class="card-body">
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="po_number">PO Number *</label>
+                        <label for="po_number">Ordrenummer (PO) *</label>
                         <input type="text" id="po_number" name="po_number" required
                                value="{{ job.po_number if job else '' }}">
                     </div>
                     <div class="form-group">
-                        <label for="customer_id">Customer</label>
+                        <label for="customer_id">Kunde</label>
                         <select id="customer_id" name="customer_id">
-                            <option value="">-- Select Customer --</option>
+                            <option value="">-- Vælg kunde --</option>
                             {% for customer in customers %}
                             <option value="{{ customer.id }}" 
                                     {% if job and job.customer_id == customer.id %}selected{% endif %}>
@@ -37,11 +37,11 @@
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="part_number">Part Number *</label>
+                        <label for="part_number">Delenummer *</label>
                         <input type="text" id="part_number" name="part_number" required
                                value="{{ job.part_number if job else '' }}"
                                list="part_number_list" autocomplete="off"
-                               placeholder="Type existing or enter new part number">
+                               placeholder="Skriv eksisterende eller nyt delenummer">
                         {% if existing_parts %}
                         <datalist id="part_number_list">
                             {% for p in existing_parts %}
@@ -51,50 +51,50 @@
                             {% endfor %}
                         </datalist>
                         {% endif %}
-                        <p class="field-help">New part numbers are created automatically when you save. Pick from the list or type a new one.</p>
+                        <p class="field-help">Nye delenumre oprettes automatisk ved gem. Vælg fra listen eller skriv et nyt.</p>
                     </div>
                     <div class="form-group">
-                        <label for="part_revision_input">Part Revision</label>
+                        <label for="part_revision_input">Delrevision</label>
                         <div class="revision-row">
-                            <select id="part_revision_select" class="revision-select" title="Load existing revision and last setup">
-                                <option value="">— Select part number first —</option>
+                            <select id="part_revision_select" class="revision-select" title="Hent eksisterende revision og sidste opsætning">
+                                <option value="">— Vælg delenummer først —</option>
                             </select>
                             <input type="text" id="part_revision_input" name="part_revision"
-                                   value="{{ job.part_revision if job else '' }}" placeholder="Or type new revision (e.g. A, 01)"
+                                   value="{{ job.part_revision if job else '' }}" placeholder="Eller skriv ny revision (f.eks. A, 01)"
                                    class="revision-input">
                         </div>
-                        <p class="field-help">Revisions are tied to part number. Pick existing to load last run setup, or type a new revision.</p>
+                        <p class="field-help">Revisioner er knyttet til delenummer. Vælg eksisterende for at hente sidste opsætning, eller skriv ny revision.</p>
                         <div id="setup-loaded-msg" class="setup-loaded-msg" style="display: none;"></div>
                     </div>
                     <div class="form-group">
-                        <label for="quantity">Quantity *</label>
+                        <label for="quantity">Antal *</label>
                         <input type="number" id="quantity" name="quantity" required min="1"
                                value="{{ job.quantity if job else '' }}">
                     </div>
                 </div>
                 
                 <div class="form-group">
-                    <label for="part_description">Part Description</label>
+                    <label for="part_description">Delbeskrivelse</label>
                     <input type="text" id="part_description" name="part_description"
                            value="{{ job.part_description if job else '' }}">
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="due_date">Due Date</label>
+                        <label for="due_date">Forfaldsdato</label>
                         <input type="date" id="due_date" name="due_date"
                                value="{{ job.due_date if job else '' }}">
                     </div>
                 </div>
                 
                 <div class="form-group">
-                    <label for="drawing_number">Drawing Number</label>
+                    <label for="drawing_number">Tegningsnummer</label>
                     <input type="text" id="drawing_number" name="drawing_number"
-                           value="{{ job.drawing_number if job else '' }}" placeholder="Optional - reference drawing">
+                           value="{{ job.drawing_number if job else '' }}" placeholder="Valgfrit - referencedocument">
                 </div>
                 
                 <div class="form-group">
-                    <label for="special_requirements">Special Requirements</label>
+                    <label for="special_requirements">Særlige krav</label>
                     <textarea id="special_requirements" name="special_requirements" rows="3">{{ job.special_requirements if job else '' }}</textarea>
                 </div>
             </div>
@@ -103,37 +103,37 @@
         <!-- Right Column: Dimensions -->
         <div class="card">
             <div class="card-header">
-                <h2>Critical Dimensions</h2>
+                <h2>Kritiske dimensioner</h2>
                 {% if not edit_mode and recent_jobs %}
                 <div class="copy-dimensions">
                     <select id="copy_from_job" class="copy-select">
-                        <option value="">Copy from job...</option>
+                        <option value="">Kopier fra ordre...</option>
                         {% for rj in recent_jobs %}
-                        <option value="{{ rj.id }}">{{ rj.internal_job_number }} - {{ rj.part_number }} ({{ rj.dim_count }} dims)</option>
+                        <option value="{{ rj.id }}">{{ rj.internal_job_number }} - {{ rj.part_number }} ({{ rj.dim_count }} dim.)</option>
                         {% endfor %}
                     </select>
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="copyDimensions()">Copy</button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="copyDimensions()">Kopier</button>
                 </div>
                 {% endif %}
             </div>
             <div class="card-body">
-                <p class="help-text">Define the dimensions that must be measured during manufacturing.</p>
+                <p class="help-text">Angiv de dimensioner der skal måles under produktion.</p>
                 
                 <div id="dimensions-container">
                     {% if edit_mode and dimensions %}
                         {% for dim in dimensions %}
                         <div class="dimension-row" data-index="{{ loop.index0 }}">
                             <div class="dim-field dim-name">
-                                <input type="text" name="dimension_name[]" value="{{ dim.dimension_name }}" placeholder="Dimension name">
+                                <input type="text" name="dimension_name[]" value="{{ dim.dimension_name }}" placeholder="Dimensionsnavn">
                             </div>
                             <div class="dim-field dim-nominal">
-                                <input type="number" step="any" name="dimension_nominal[]" value="{{ dim.nominal_value }}" placeholder="Nominal">
+                                <input type="number" step="any" name="dimension_nominal[]" value="{{ dim.nominal_value }}" placeholder="Nominel">
                             </div>
                             <div class="dim-field dim-tol">
-                                <input type="number" step="any" name="dimension_tol_plus[]" value="{{ dim.tolerance_plus }}" placeholder="+Tol">
+                                <input type="number" step="any" name="dimension_tol_plus[]" value="{{ dim.tolerance_plus }}" placeholder="+Tol.">
                             </div>
                             <div class="dim-field dim-tol">
-                                <input type="number" step="any" name="dimension_tol_minus[]" value="{{ dim.tolerance_minus }}" placeholder="-Tol">
+                                <input type="number" step="any" name="dimension_tol_minus[]" value="{{ dim.tolerance_minus }}" placeholder="-Tol.">
                             </div>
                             <div class="dim-field dim-unit">
                                 <select name="dimension_unit[]">
@@ -149,7 +149,7 @@
                             <div class="dim-field dim-critical">
                                 <label class="checkbox-label">
                                     <input type="checkbox" name="dimension_critical[]" value="{{ loop.index0 }}" {% if dim.critical %}checked{% endif %}>
-                                    Critical
+                                    Kritisk
                                 </label>
                             </div>
                             <div class="dim-field dim-actions">
@@ -160,14 +160,14 @@
                     {% endif %}
                 </div>
                 
-                <button type="button" class="btn btn-secondary" onclick="addDimension()">+ Add Dimension</button>
+                <button type="button" class="btn btn-secondary" onclick="addDimension()">+ Tilføj dimension</button>
             </div>
         </div>
     </div>
     
     <div class="form-actions">
-        <a href="{{ url_for('jobs_list') }}" class="btn btn-secondary">Cancel</a>
-        <button type="submit" class="btn btn-primary">{% if edit_mode %}Save Changes{% else %}Create Job{% endif %}</button>
+        <a href="{{ url_for('jobs_list') }}" class="btn btn-secondary">Annuller</a>
+        <button type="submit" class="btn btn-primary">{% if edit_mode %}Gem ændringer{% else %}Opret ordre{% endif %}</button>
     </div>
 </form>
 {% endblock %}
@@ -325,16 +325,16 @@ function addDimension(data = {}) {
     
     row.innerHTML = `
         <div class="dim-field dim-name">
-            <input type="text" name="dimension_name[]" value="${data.dimension_name || ''}" placeholder="Dimension name (e.g., Ø25 H7)">
+            <input type="text" name="dimension_name[]" value="${data.dimension_name || ''}" placeholder="Dimensionsnavn (f.eks. Ø25 H7)">
         </div>
         <div class="dim-field dim-nominal">
-            <input type="number" step="any" name="dimension_nominal[]" value="${data.nominal_value || ''}" placeholder="Nominal">
+            <input type="number" step="any" name="dimension_nominal[]" value="${data.nominal_value || ''}" placeholder="Nominel">
         </div>
         <div class="dim-field dim-tol">
-            <input type="number" step="any" name="dimension_tol_plus[]" value="${data.tolerance_plus || ''}" placeholder="+Tol">
+            <input type="number" step="any" name="dimension_tol_plus[]" value="${data.tolerance_plus || ''}" placeholder="+Tol.">
         </div>
         <div class="dim-field dim-tol">
-            <input type="number" step="any" name="dimension_tol_minus[]" value="${data.tolerance_minus || ''}" placeholder="-Tol">
+            <input type="number" step="any" name="dimension_tol_minus[]" value="${data.tolerance_minus || ''}" placeholder="-Tol.">
         </div>
         <div class="dim-field dim-unit">
             <select name="dimension_unit[]">
@@ -350,7 +350,7 @@ function addDimension(data = {}) {
         <div class="dim-field dim-critical">
             <label class="checkbox-label">
                 <input type="checkbox" name="dimension_critical[]" value="${dimensionIndex}" ${data.critical ? 'checked' : ''}>
-                Critical
+                Kritisk
             </label>
         </div>
         <div class="dim-field dim-actions">
@@ -454,7 +454,7 @@ function loadLastSetup(partId) {
             }
 
             const msgEl = document.getElementById('setup-loaded-msg');
-            msgEl.textContent = 'Loaded setup from last run (Job ' + (setup.job_number || '') + '). You can change any fields as needed.';
+            msgEl.textContent = 'Opsætning hentet fra sidste kørsel (Ordre ' + (setup.job_number || '') + '). Du kan ændre felter efter behov.';
             msgEl.style.display = 'block';
         })
         .catch(err => console.error('Error loading last setup:', err));
